@@ -1,9 +1,12 @@
 {
+	"name": "async",
 	"authors": [
 		"Mai-Lapyst"
 	],
 	"copyright": "Copyright © 2023, Mai-Lapyst",
 	"description": "A minimal D application.",
 	"license": "AGPL-2.0-or-later",
-	"name": "async"
+	"subPackages": [
+		"./test"
+	]
 }
