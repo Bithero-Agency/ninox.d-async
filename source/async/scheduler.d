@@ -54,6 +54,40 @@ class Scheduler {
 		this.queue.insertBack(f);
 	}
 
+	/// Schedules a function.
+	/// 
+	/// Note: This creates an $(STDREF Fiber, core,thread) internaly and calls `schedule(Fiber f)`.
+	/// 
+	/// Params:
+	///  fn = the function to schedule
+	/// 
+	/// In:
+	///  fn must not be null
+	void schedule(void function() fn)
+	in {
+		assert(fn);
+	}
+	do {
+		this.schedule(new Fiber(fn));
+	}
+
+	/// Schedules a delegate.
+	///
+	/// Note: This creates an $(STDREF Fiber, core,thread) internaly and calls `schedule(Fiber f)`.
+	/// 
+	/// Params:
+	///  dg = the delegate to schedule
+	/// 
+	/// In:
+	///  dg must not be null
+	void schedule(void delegate() dg)
+	in {
+		assert(dg);
+	}
+	do {
+		this.schedule(new Fiber(dg));
+	}
+
 	/// The main loop.
 	///
 	/// This method is the main eventloop and only returns once all fibers in the scheduler have been completed.
