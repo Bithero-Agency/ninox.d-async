@@ -26,7 +26,7 @@
 module async.timeout;
 
 import core.time : Duration;
-import async : VoidFuture;
+import async.futures : VoidFuture;
 
 /**
  * A future for a timeout. Use $(LREF timeout) to create it.

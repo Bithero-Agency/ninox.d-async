@@ -25,66 +25,10 @@
 
 module async;
 
-import core.thread : Fiber;
-
 public import async.scheduler;
 public import async.timeout;
 public import async.io;
-
-/**
- * Represents some work that can be awaited.
- *
- * To implement this, one has to implement $(LREF Future#getValue) to accqiure the result,
- * and $(LREF Future#isDone) to actually check if the future is resolved. If one donst have a result,
- * extends $(LREF VoidFuture) instead.
- *
- * For an example, see $(D async.timeout.TimeoutFuture).
- *
- * See_Also: $(LREF VoidFuture) a specialization of this class for the `void` type.
- */
-abstract class Future(T) {
-	/// Returns the value this future resolves to.
-	/// Gets called by $(LREF await) once detected that the future has been resolved via $(LREF isDone).
-	/// 
-	/// Note: Often times this is implemented as an plain getter to an member variable.
-	/// 
-	/// See_Also: $(LREF await) for the only caller this function should have
-	protected abstract T getValue();
-
-	/// Returns true once the future has been resolved.
-	/// Gets repeatly called by $(LREF await) to check if the current fiber can continue.
-	/// 
-	/// Returns: the state if the future has been resolved or not
-	/// 
-	/// See_Also: $(LREF await) for the only caller this function should have
-	protected abstract bool isDone();
-
-	/// Waits on the task until it provides a value,
-	/// by using a spin-lock like approach
-	/// 
-	/// Returns: the value this future produces.
-	/// 
-	/// See_Also: $(LREF getValue) for the return value and $(LREF isDone) for the check if the future is resolved.
-	T await() {
-		while (!this.isDone()) {
-			// reschedule the current fiber
-			gscheduler.schedule(Fiber.getThis());
-
-			// Yield the current fiber until the task itself is done
-			Fiber.yield();
-		}
-		return this.getValue();
-	}
-}
-
-/// Future returning nothing
-/// 
-/// Usefull for custom futures that dosnt produce anything, like $(D async.timeout.TimeoutFuture).
-/// 
-/// See_Also: $(D async.Future) for the supertype.
-abstract class VoidFuture : Future!void {
-	protected override void getValue() {}
-}
+public import async.futures;
 
 /// The global scheduler.
 /// Used by nearly all the code to re-schedule fibers.

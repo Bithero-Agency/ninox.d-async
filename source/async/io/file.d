@@ -33,7 +33,8 @@ import std.range : isSomeFiniteCharInputRange;
 import std.internal.cstring : tempCString;
 import std.stdio : writeln;
 
-import async : Future, VoidFuture, gscheduler;
+import async.futures : Future, VoidFuture;
+import async : gscheduler;
 
 version (Windows) {
     private alias FSChar = WCHAR;
