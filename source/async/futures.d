@@ -83,3 +83,21 @@ abstract class Future(T) {
 abstract class VoidFuture : Future!void {
 	protected override void getValue() {}
 }
+
+/// Basic future that holds a value
+/// For infos how to implement a future, see $(LREF Future).
+/// 
+/// Note: if you want a `ValueFuture!void`, use $(LREF VoidFuture) instead.
+/// 
+/// See_Also: $(LREF VoidFuture)
+abstract class ValueFuture(T) : Future!T {
+	protected T value;
+
+	/// Returns the stored value;
+	/// set it in your overwritten $(LREF isDone) method.
+	/// 
+	/// Return: the stored value
+	protected override T getValue() {
+		return this.value;
+	}
+}
