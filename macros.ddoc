@@ -1,0 +1,28 @@
+A = <a href="$1">$+</a>
+
+LINK = $(A $1, $+)
+EXT_LINK = <a href="$1" target="_blank" class="ext-link">$+</a>
+
+HTTP = $(LINK https://$1,$2)
+
+___D = <span class="lang-d">$1</span>
+
+UNDERSCORE_PREFIXED=_$1$(UNDERSCORE_PREFIXED $+)
+UNDERSCORE_PREFIXED_SKIP=$(UNDERSCORE_PREFIXED $+)
+
+SLASH_PREFIXED=/$1$(SLASH_PREFIXED $+)
+SLASH_PREFIXED_SKIP=$(SLASH_PREFIXED $+)
+
+DOT_PREFIXED=.$1$(DOT_PREFIXED $+)
+DOT_PREFIXED_SKIP=$(DOT_PREFIXED $+)
+
+LREF = $(D $1)
+___LREF = $(A $1, <span class="lang-d">$1</span>)
+___REF = $(A /$2/$1, $(D $1))
+
+_ = Macro for references to the standardlibrary
+PHOBOS_PATH = https://dlang.org/library/
+STDLINK = $(EXT_LINK $(PHOBOS_PATH)$1, $(D $+))
+
+_ = Ex.: $(STDREF thing, std,some,module)
+STDREF = $(EXT_LINK $(PHOBOS_PATH)$2$(SLASH_PREFIXED_SKIP $+, $1).html, $(D $2$(DOT_PREFIXED_SKIP $+, $1)))

@@ -6,7 +6,7 @@ import async;
 void doWork() {
 	import core.time;
 	writeln("Begin doWork()");
-	int _ = timeout(seconds(5)).await();
+	timeout(seconds(5)).await();
 	writeln("End doWork()");
 }
 
@@ -15,10 +15,16 @@ void otherWork() {
 	int count = 0;
 	while (count < 5) {
 		writeln("do otherWork()...");
-		import core.time;
-		int _ = timeout(seconds(1)).await();
+		import core.time : seconds;
+		timeout(seconds(1)).await();
 		count++;
 	}
+}
+
+void readFile() {
+	auto data = readAsync("./big.data").await();
+	//writeln(cast(char[]) data);
+	writeln("done reading: ", data.length);
 }
 
 /// Main
@@ -26,5 +32,6 @@ void main()
 {
 	gscheduler.schedule(new Fiber(&doWork));
 	gscheduler.schedule(new Fiber(&otherWork));
+	gscheduler.schedule(new Fiber(&readFile));
 	gscheduler.loop();
 }
