@@ -16,9 +16,7 @@
  */
 
 /** 
- * This module provides asyncronous access to IO
- *
- * For file access we have:
+ * This module provides asyncronous access to file IO
  *
  *  - $(LREF readAsync) and $(LREF writeAsync) provide an api like
  *    $(STDREF read, std,file) and $(STDREF write, std,file) from the standard library
