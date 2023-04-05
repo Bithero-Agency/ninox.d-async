@@ -28,7 +28,7 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.io;
+module async.io.file;
 
 import std.traits : isConvertibleToString, isNarrowString, isSomeString;
 import std.range : isSomeFiniteCharInputRange;
@@ -94,7 +94,7 @@ class FileReadFuture : Future!(void[]) {
 
             debug (async_fileio) {
                 import std.stdio : writeln;
-                writeln("[async.io.FileReadFuture] read ", r, " bytes");
+                writeln("[async.io.file.FileReadFuture] read ", r, " bytes");
             }
 
             this.value ~= block;
@@ -188,7 +188,7 @@ class FileWriteFuture : VoidFuture {
 
         debug (async_fileio) {
             import std.stdio : writeln;
-            writeln("[async.io.FileWriteFuture] written ", r, " bytes");
+            writeln("[async.io.file.FileWriteFuture] written ", r, " bytes");
         }
 
         return this.buffer.length <= 0;
@@ -244,3 +244,4 @@ if (isConvertibleToString!R)
 private FileWriteFuture writeAsyncImpl(scope const(char)[] name, scope const(FSChar)* namez, const void[] buffer) {
     return new FileWriteFuture(namez, buffer);
 }
+
