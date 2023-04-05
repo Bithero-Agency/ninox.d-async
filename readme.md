@@ -1,4 +1,4 @@
-# Async
+# MiniAsync
 
 A small asyncronous framework for everyone.
 
