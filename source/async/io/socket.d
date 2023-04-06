@@ -61,6 +61,7 @@ class SocketAcceptFuture : ValueFuture!AsyncSocket {
 }
 
 static int MAX_SOCK_READBLOCK = 4069;
+static int MAX_SOCK_WRITEBLOCK = 4069;
 
 /**
  * Future for accepting data from an socket.
@@ -113,6 +114,41 @@ class SocketRecvFuture : ValueFuture!size_t {
             return false;
         }
         this.value = 0; // TODO: ???
+        return true;
+    }
+}
+
+class SocketSendFuture : VoidFuture {
+    private Socket sock;
+    private const(void[]) buf;
+    private size_t off = 0;
+    private size_t remaining;
+    private SocketFlags flags;
+
+    this(Socket sock, const(void[]) buf, SocketFlags flags = SocketFlags.NONE) {
+        this.sock = sock;
+        this.buf = buf;
+        this.remaining = buf.length;
+        this.flags = flags;
+    }
+
+    protected override bool isDone() {
+        import std.algorithm : min;
+        int writesize = min(this.remaining, MAX_SOCK_WRITEBLOCK);
+
+        version (Posix) {
+            void* ptr = cast(void*) (this.buf.ptr + this.off);
+            auto r = send(
+                this.sock.handle(), ptr, writesize, cast(int) this.flags
+            );
+            this.remaining -= r;
+            this.off += r;
+        }
+
+        if (this.remaining > 0) {
+            gscheduler.addIoWaiter(this.sock.handle());
+            return false;
+        }
         return true;
     }
 }
@@ -239,6 +275,17 @@ class AsyncSocket {
     /// See_Also: $(STDLINK std/socket/socket.send.html, std.socket.Socket.send).
     ptrdiff_t sendSync(scope const(void)[] buf) {
         return this.sock.send(buf);
+    }
+
+    /// Sends data asyncronously
+    /// 
+    /// Params:
+    ///  buf = the buffer to send
+    ///  flags = flags for the send operation
+    /// 
+    /// Return: a future that can be awaited to send the data
+    SocketSendFuture send(scope const(void)[] buf, SocketFlags flags = SocketFlags.NONE) {
+        return new SocketSendFuture(this.sock, buf, flags);
     }
 
     /// Sends data syncronously
