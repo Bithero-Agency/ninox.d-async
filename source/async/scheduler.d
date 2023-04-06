@@ -140,7 +140,7 @@ class Scheduler {
 		}
 
 		Fiber f = io_waiters[fd];
-		io_waiters[fd] = null;
+		io_waiters.remove(fd);
 		version (linux) {
 			epoll_event ev;
 			ev.data.fd = fd;
