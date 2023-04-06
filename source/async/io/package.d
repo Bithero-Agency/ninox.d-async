@@ -28,3 +28,4 @@
 module async.io;
 
 public import async.io.file;
+public import async.io.socket;
