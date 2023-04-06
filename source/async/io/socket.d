@@ -279,4 +279,11 @@ class AsyncSocket {
     SocketRecvFuture recieve(scope void[] buf, SocketFlags flags = SocketFlags.NONE) {
         return new SocketRecvFuture(this.sock, buf, flags);
     }
+
+    /// Sets the keep alive time & interval
+    /// 
+    /// See_Also: $(STDLINK std/socket/socket.setKeepAlive.html, std.socket.Socket.setKeepAlive).
+    void setKeepAlive(int time, int interval) {
+        this.sock.setKeepAlive(time, interval);
+    }
 }
