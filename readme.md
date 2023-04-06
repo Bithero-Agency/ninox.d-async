@@ -38,6 +38,5 @@ Your `main`-function also should call `gscheduler.loop();` before it's end to ac
 - add signalhandlers for `SIGTERM` and `SIGINT`
 - support `io_uring` under linux
 - support more platforms like windows and osx
-- reduce boilerplate / add an `async main`.
 - add thread-pool support
 - add more library features such as arbitary streams
