@@ -118,6 +118,10 @@ class SocketRecvFuture : ValueFuture!size_t {
     }
 }
 
+/**
+ * Future for sending data over a socket.
+ * Use $(LREF AsyncSocket.send) to aqquire an instance of this.
+ */
 class SocketSendFuture : VoidFuture {
     private Socket sock;
     private const(void[]) buf;
