@@ -141,6 +141,11 @@ class Scheduler {
 
 		Fiber f = io_waiters[fd];
 		io_waiters[fd] = null;
+		version (linux) {
+			epoll_event ev;
+			ev.data.fd = fd;
+			epoll_ctl(this.epoll_fd, EPOLL_CTL_DEL, fd, &ev);
+		}
 		this.schedule(f);
 	}
 
