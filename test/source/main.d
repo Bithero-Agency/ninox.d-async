@@ -25,6 +25,15 @@ void readFile() {
 	auto data = readAsync("./big.data").await();
 	//writeln(cast(char[]) data);
 	writeln("done reading: ", data.length);
+
+	import async.utils : Option;
+	auto fut = new FnFuture!int(() {
+		import core.time : seconds;
+		timeout(seconds(5)).await();
+		return Option!int.some(42);
+	});
+	auto d = fut.await();
+	writeln("done fnfut: ", d);
 }
 
 /// Main
