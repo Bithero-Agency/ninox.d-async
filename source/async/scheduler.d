@@ -113,16 +113,22 @@ class Scheduler {
 		this.schedule(new Fiber(dg));
 	}
 
+	private bool active() {
+		return !queue.empty() || io_waiters.length > 0;
+	}
+
 	/// The main loop.
 	///
 	/// This method is the main eventloop and only returns once all fibers in the scheduler have been completed.
 	void loop() {
 		// As long as our queue is not empty, we take the front most fiber and call it
 		// Thanks to the spin-lock like code in Future.await(), if the work isnt done, we reschedule.
-		while (!queue.empty()) {
-			Fiber t = queue.front();
-			queue.removeFront(1);
-			t.call();
+		while (this.active()) {
+			if (!queue.empty()) {
+				Fiber t = queue.front();
+				queue.removeFront(1);
+				t.call();
+			}
 
 			pollEvents();
 		}
