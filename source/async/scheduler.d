@@ -161,7 +161,8 @@ class Scheduler {
 				throw new Exception(format("Epoll failed us; pls look into manual. errno=%d", errno));
 			}
 
-			foreach (e; events) {
+			foreach (i; 0 .. n) {
+				auto e = events[i];
 				auto flags = e.events;
 				if (flags & EPOLLIN) {
 					// ready to read
