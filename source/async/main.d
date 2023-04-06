@@ -23,7 +23,7 @@ string[] g_async_args;
  * Params:
  *  func = the function to use as asyncronous main
  */
-template AsyncMain(string func = "async_main", bool kill_scheduler_on_exit = true) {
+template AsyncMain(string func = "async_main") {
     mixin AsyncLoop!(func, kill_scheduler_on_exit);
 
     int main(string[] args) {
@@ -31,7 +31,7 @@ template AsyncMain(string func = "async_main", bool kill_scheduler_on_exit = tru
     }
 }
 
-template AsyncLoop(string func, bool kill_scheduler_on_exit) {
+template AsyncLoop(string func) {
     import std.meta : AliasSeq;
     import std.traits : isFunction, ReturnType, Parameters;
 
