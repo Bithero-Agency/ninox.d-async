@@ -49,7 +49,7 @@ void echoServer() {
 		char[5] buffer;
 		auto n = sock.recieve(buffer).await();
 		writeln("got ", n, " bytes of data: ", cast(uint8_t[]) buffer[0 .. n]);
-		sock.sendSync(buffer[0 .. n]);
+		sock.send(buffer[0 .. n]).await();
 
 		sock.shutdownSync(SocketShutdown.BOTH);
 	}
