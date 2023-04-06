@@ -34,7 +34,7 @@ Your `main`-function also should call `gscheduler.loop();` before it's end to ac
 - improve way we handle futures: would like to get rid of spin-lock like codeflow
 - add more io futures:
   - chunked file io
-- imporve socket based io; i.e. make async variants for sending data.
+- improve socket based io by making the underlaying socket non-blocking
 - add signalhandlers for `SIGTERM` and `SIGINT`
 - support `io_uring` under linux
 - support more platforms like windows and osx
