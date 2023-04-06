@@ -36,11 +36,31 @@ void readFile() {
 	writeln("done fnfut: ", d);
 }
 
+void echoServer() {
+	import async.io.socket;
+	import std.socket;
+	auto l = new AsyncSocket(AddressFamily.INET, SocketType.STREAM);
+	l.bind(new InternetAddress("localhost", 8080));
+	l.listen();
+	while (true) {
+		auto sock = l.accept().await();
+		writeln("accepted sock: ", sock.remoteAddress);
+
+		char[5] buffer;
+		auto n = sock.recieve(buffer).await();
+		writeln("got ", n, " bytes of data: ", cast(uint8_t[]) buffer[0 .. n]);
+		sock.sendSync(buffer[0 .. n]);
+
+		sock.shutdownSync(SocketShutdown.BOTH);
+	}
+}
+
 /// Main
 void main()
 {
 	gscheduler.schedule(new Fiber(&doWork));
 	gscheduler.schedule(new Fiber(&otherWork));
 	gscheduler.schedule(new Fiber(&readFile));
+	gscheduler.schedule(&echoServer);
 	gscheduler.loop();
 }
