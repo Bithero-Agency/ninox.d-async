@@ -71,12 +71,14 @@ class SocketRecvFuture : ValueFuture!size_t {
     private const(void[]) buf;
     private size_t off = 0;
     private size_t remaining;
+    private SocketFlags flags;
 
     /// Reads into a predefined buffer
-    this(Socket sock, const(void[]) buf) {
+    this(Socket sock, const(void[]) buf, SocketFlags flags = SocketFlags.NONE) {
         this.sock = sock;
         this.buf = buf;
         this.remaining = buf.length;
+        this.flags = flags;
     }
 
     protected override bool isDone() {
@@ -91,7 +93,7 @@ class SocketRecvFuture : ValueFuture!size_t {
             version (Posix) {
                 void* ptr = cast(void*) (this.buf.ptr + this.off);
                 auto r = recv(
-                    this.sock.handle(), ptr, readsize, cast(int) SocketFlags.NONE
+                    this.sock.handle(), ptr, readsize, cast(int) this.flags
                 );
                 this.remaining -= r;
                 this.off += r;
@@ -271,9 +273,10 @@ class AsyncSocket {
     /// 
     /// Params:
     ///  buf = the buffer to read into; recieves at max the length of this in bytes
+    ///  flags = flags for the recieve operation
     /// 
     /// Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
-    SocketRecvFuture recieve(scope void[] buf) {
-        return new SocketRecvFuture(this.sock, buf);
+    SocketRecvFuture recieve(scope void[] buf, SocketFlags flags = SocketFlags.NONE) {
+        return new SocketRecvFuture(this.sock, buf, flags);
     }
 }
