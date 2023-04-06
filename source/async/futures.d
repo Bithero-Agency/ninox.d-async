@@ -28,6 +28,7 @@ module async.futures;
 import core.thread : Fiber;
 
 import async : gscheduler;
+import async.utils : Option;
 
 /**
  * Represents some work that can be awaited.
@@ -99,5 +100,61 @@ abstract class ValueFuture(T) : Future!T {
 	/// Return: the stored value
 	protected override T getValue() {
 		return this.value;
+	}
+}
+
+private struct CallbackCallable(T) {
+	void opAssign(Option!T function() fn) pure nothrow @nogc @safe {
+		() @trusted { this.fn = fn; }();
+		this.kind = Kind.FN;
+	}
+	void opAssign(Option!T delegate() dg) pure nothrow @nogc @safe {
+		() @trusted { this.dg = dg; }();
+		this.kind = Kind.DG;
+	}
+	Option!T opCall() {
+		switch (kind) {
+			case Kind.FN: return this.fn();
+			case Kind.DG: return this.dg();
+			default:
+				throw new Exception("Invalid callback type for FnFuture...");
+		}
+	}
+private:
+	enum Kind { NO, FN, DG };
+	Kind kind = Kind.NO;
+	union {
+		Option!T function() fn;
+		Option!T delegate() dg;
+	}
+}
+
+/// Future that uses an callback to recieve the value and state if it is resolved.
+class FnFuture(T) : ValueFuture!T {
+
+	this(Option!T function() fn) nothrow {
+		setCallback(fn);
+	}
+
+	this(Option!T delegate() dg) nothrow {
+		setCallback(dg);
+	}
+
+	protected override bool isDone() {
+		auto opt = cb();
+		if (opt.isSome()) {
+			this.value = opt.take();
+			return true;
+		}
+		return false;
+	}
+
+private:
+	CallbackCallable!T cb;
+	final void setCallback(Option!T function() fn) nothrow @nogc {
+		cb = fn;
+	}
+	final void setCallback(Option!T delegate() dg) nothrow @nogc {
+		cb = dg;
 	}
 }
