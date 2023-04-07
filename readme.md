@@ -40,3 +40,4 @@ Your `main`-function also should call `gscheduler.loop();` before it's end to ac
 - support more platforms like windows and osx
 - add thread-pool support
 - add more library features such as arbitary streams
+- add async variant of `awaitAllSync`
