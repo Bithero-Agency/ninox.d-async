@@ -55,12 +55,46 @@ void echoServer() {
 	}
 }
 
+int doTimeout(int secs) {
+	import core.time;
+	writeln("Start doTimeout for ", secs, " seconds");
+	timeout(seconds(secs)).await();
+	writeln("End doTimeout for ", secs, " seconds");
+	return secs * 2;
+}
+long doTimeout2(int secs) {
+	import core.time;
+	writeln("Start doTimeout for ", secs, " seconds");
+	timeout(seconds(secs)).await();
+	writeln("End doTimeout for ", secs, " seconds");
+	return secs * 2;
+}
+
+import async.utils : MakeClosure;
+mixin MakeClosure;
+
+void testAsyncFn() {
+	import std.container : DList;
+	import async : doAsync;
+	DList!(ValueFuture!int) futures;
+	int[] secs = [5, 8, 10];
+	foreach (sec; secs) {
+		auto cl = makeClosure!"doTimeout"(sec);
+		auto fut = doAsync(cl);
+		futures.insertBack(fut);
+	}
+	import std.variant : Variant;
+	auto res = captureAll!Variant( doAsync(doTimeout(5)), doAsync(doTimeout2(8)) ).await();
+	foreach(r; res) { writeln(" - ", r); }
+}
+
 /// Main
 void main()
 {
 	gscheduler.schedule(new Fiber(&doWork));
-	gscheduler.schedule(new Fiber(&otherWork));
-	gscheduler.schedule(new Fiber(&readFile));
-	gscheduler.schedule(&echoServer);
+	//gscheduler.schedule(new Fiber(&otherWork));
+	//gscheduler.schedule(new Fiber(&readFile));
+	//gscheduler.schedule(&testAsyncFn);
+	//gscheduler.schedule(&echoServer);
 	gscheduler.loop();
 }
