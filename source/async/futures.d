@@ -130,6 +130,7 @@ private:
 }
 
 /// Future that uses an callback to recieve the value and state if it is resolved.
+/// If you want to return no value (i.e. useing `void`), use $(LREF VoidFnFuture) instead.
 class FnFuture(T) : ValueFuture!T {
 
 	this(Option!T function() fn) nothrow {
@@ -155,6 +156,57 @@ private:
 		cb = fn;
 	}
 	final void setCallback(Option!T delegate() dg) nothrow @nogc {
+		cb = dg;
+	}
+}
+
+private struct VoidCallbackCallable {
+	void opAssign(bool function() fn) pure nothrow @nogc @safe {
+		() @trusted { this.fn = fn; }();
+		this.kind = Kind.FN;
+	}
+	void opAssign(bool delegate() dg) pure nothrow @nogc @safe {
+		() @trusted { this.dg = dg; }();
+		this.kind = Kind.DG;
+	}
+	bool opCall() {
+		switch (kind) {
+			case Kind.FN: return this.fn();
+			case Kind.DG: return this.dg();
+			default:
+				throw new Exception("Invalid callback type for FnFuture...");
+		}
+	}
+private:
+	enum Kind { NO, FN, DG };
+	Kind kind = Kind.NO;
+	union {
+		bool function() fn;
+		bool delegate() dg;
+	}
+}
+
+/// Future that uses an callback to recieve the state if it is resolved.
+/// If you want to return a value, use $(LREF FnFuture) instead.
+class VoidFnFuture : VoidFuture {
+	this(bool function() fn) nothrow {
+		setCallback(fn);
+	}
+
+	this(bool delegate() dg) nothrow {
+		setCallback(dg);
+	}
+
+	protected override bool isDone() {
+		return cb();
+	}
+
+private:
+	VoidCallbackCallable cb;
+	final void setCallback(bool function() fn) nothrow @nogc {
+		cb = fn;
+	}
+	final void setCallback(bool delegate() dg) nothrow @nogc {
 		cb = dg;
 	}
 }
