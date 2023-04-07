@@ -210,3 +210,32 @@ private:
 		cb = dg;
 	}
 }
+
+/// Calls some function asyncronously, discarding the result
+/// 
+/// Params:
+///  task = lazy expression of the task to do asyncronously
+/// 
+/// Returns: a future that, when awaited, runs the task supplied
+VoidFuture doAsync(T)(lazy T task)
+if (is(T == void))
+{
+	return new VoidFnFuture(() {
+		task;
+		return true;
+	});
+}
+
+/// Calls some function asyncronously, capturing the result
+/// 
+/// Params:
+///  task = lazy expression of the task to do asyncronously
+/// 
+/// Returns: a future that, when awaited, runs the task supplied
+ValueFuture!T doAsync(T)(lazy T task)
+if (!is(T == void))
+{
+	return new FnFuture!T(() {
+		return Option!T.some(task);
+	});
+}
