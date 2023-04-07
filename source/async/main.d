@@ -24,7 +24,7 @@ string[] g_async_args;
  *  func = the function to use as asyncronous main
  */
 template AsyncMain(string func = "async_main") {
-    mixin AsyncLoop!(func, kill_scheduler_on_exit);
+    mixin AsyncLoop!(func);
 
     int main(string[] args) {
         return mainAsyncLoop(args);
