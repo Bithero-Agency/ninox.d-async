@@ -27,7 +27,9 @@ module async.futures;
 
 import core.thread : Fiber;
 
-import std.traits : isFunction, isDelegate;
+import std.container : DList, SList;
+import std.traits : isInstanceOf, TemplateArgsOf, isFunction, isDelegate;
+import std.variant : Variant;
 
 import async : gscheduler;
 import async.utils : Option;
@@ -413,5 +415,110 @@ if (!is(T == void) && !isFunction!T && !isDelegate!T)
 {
 	return new FnFuture!T(() {
 		return Option!T.some(task);
+	});
+}
+
+/** 
+ * Awaits all futures inside the list; all results are discarded.
+ * Use $(LREF captureAll) when wanting the results.
+ * 
+ * Params:
+ *  list = list of futures to be awaited; allowed types are $(D std.container.DList) and $(D std.container.SList)
+ */
+void awaitAllSync(T)(T list)
+if (isInstanceOf!(DList, T) || isInstanceOf!(SList, T))
+{
+	if (list.empty()) {
+		return;
+	}
+
+	alias A = TemplateArgsOf!T;
+	static assert(
+		__traits(hasMember, A, "await"),
+		"DList has type `" ~ __traits(identifier, A) ~ "` but is not awaitable; implement `await` on it"
+	);
+
+	foreach (e; list) {
+		e.await();
+	}
+}
+
+/** 
+ * Awaits all futures given; all results are discarded.
+ * Use $(LREF captureAll) when wanting the results.
+ * 
+ * Params:
+ *  args = varargs of futures to be awaited
+ */
+void awaitAllSync(T...)(T args) {
+	static if (T.length == 0) {
+		return;
+	}
+
+	foreach (i, arg; args) {
+		import std.conv : to;
+		alias A = typeof(arg);
+		static assert(
+			__traits(hasMember, A, "await"),
+			"Argument #" ~ to!string(i) ~ " is of type `" ~ __traits(identifier, A) ~ "` but is not awaitable; implement `await` on it"
+		);
+
+		arg.await();
+	}
+}
+
+/** 
+ * Creates a future that when awaited, awaits all futures in the list and captures the results.
+ * 
+ * Params:
+ *   list = list of futures to be awaited; allowed types are $(D std.container.DList) and $(D std.container.SList)
+ * 
+ * Returns: A future that, when awaited, awaits all futures in the list and captures the results in a $(D std.container.DList)
+ */
+FnFuture!(DList!R) captureAll(R, T)(T list)
+if (isInstanceOf!(DList, T) || isInstanceOf!(SList, T))
+{
+	alias F = TemplateArgsOf!T;
+	static assert(
+		__traits(hasMember, F, "await"),
+		"DList has type `" ~ __traits(identifier, F) ~ "` but is not awaitable; implement `await` on it"
+	);
+	return new FnFuture!(DList!R)(() {
+		DList!R res;
+		foreach (e; list) {
+			auto r = e.await();
+			res.insertBack(r);
+		}
+		return Option!(DList!R).some(res);
+	});
+}
+
+/** 
+ * Creates a future that when awaited, awaits all futures given and captures the results.
+ * 
+ * Params:
+ *   args = varargs of futures to be awaited; allowed types are $(D std.container.DList) and $(D std.container.SList)
+ * 
+ * Returns: A future that, when awaited, awaits all futures given and captures the results in a $(D std.container.DList)
+ */
+FnFuture!(DList!R) captureAll(R, T...)(T args)
+{
+	foreach (i, arg; args) {
+		import std.conv : to;
+		alias A = typeof(arg);
+		static assert(
+			__traits(hasMember, A, "await"),
+			"Argument #" ~ to!string(i) ~ " is of type `" ~ __traits(identifier, A) ~ "` but is not awaitable; implement `await` on it"
+		);
+	}
+	return new FnFuture!(DList!R)(() {
+		import std.stdio;
+		DList!R res;
+		foreach (arg; args) {
+			auto r = arg.await();
+			static if (is(R == Variant)) { res.insertBack(Variant(r)); }
+			else { res.insertBack(r); }
+		}
+		return Option!(DList!R).some(res);
 	});
 }
