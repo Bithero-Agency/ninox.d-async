@@ -27,6 +27,8 @@ module async.futures;
 
 import core.thread : Fiber;
 
+import std.traits : isFunction, isDelegate;
+
 import async : gscheduler;
 import async.utils : Option;
 
@@ -211,6 +213,54 @@ private:
 	}
 }
 
+/**
+ * Runs a function asnycronously
+ * 
+ * Params:
+ *   fn = the function to run
+ * 
+ * Returns: a future that, when awaited, runs the function
+ */
+VoidFnFuture doAsync(void function() fn) {
+	return new VoidFnFuture(() { fn(); return true; });
+}
+
+/**
+ * Runs a delegate asnycronously
+ * 
+ * Params:
+ *   dg = the delegate to run
+ * 
+ * Returns: a future that, when awaited, runs the delegate
+ */
+VoidFnFuture doAsync(void delegate() dg) {
+	return new VoidFnFuture(() { dg(); return true; });
+}
+
+/**
+ * Runs a function asnycronously
+ * 
+ * Params:
+ *   fn = the function to run
+ * 
+ * Returns: a future that, when awaited, runs the function and returns the result of it
+ */
+FnFuture!T doAsync(T)(T function() fn) {
+	return new FnFuture!T(() { return Option!T.some(fn()); });
+}
+
+/**
+ * Runs a delegate asnycronously
+ * 
+ * Params:
+ *   dg = the delegate to run
+ * 
+ * Returns: a future that, when awaited, runs the delegate and returns the result of it
+ */
+FnFuture!T doAsync(T)(T delegate() dg) {
+	return new FnFuture!T(() { return Option!T.some(dg()); });
+}
+
 /// Calls some function asyncronously, discarding the result.
 /// 
 /// Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
@@ -222,7 +272,7 @@ private:
 /// 
 /// Returns: a future that, when awaited, runs the task supplied
 VoidFuture doAsync(T)(lazy T task)
-if (is(T == void))
+if (is(T == void) && !isFunction!T && !isDelegate!T)
 {
 	return new VoidFnFuture(() {
 		task;
@@ -241,7 +291,7 @@ if (is(T == void))
 /// 
 /// Returns: a future that, when awaited, runs the task supplied
 ValueFuture!T doAsync(T)(lazy T task)
-if (!is(T == void))
+if (!is(T == void) && !isFunction!T && !isDelegate!T)
 {
 	return new FnFuture!T(() {
 		return Option!T.some(task);
