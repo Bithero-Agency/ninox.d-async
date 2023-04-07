@@ -211,7 +211,11 @@ private:
 	}
 }
 
-/// Calls some function asyncronously, discarding the result
+/// Calls some function asyncronously, discarding the result.
+/// 
+/// Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
+///   since when the future is actually run the *current* value of the variable is used;
+///   not the one when the call was made!
 /// 
 /// Params:
 ///  task = lazy expression of the task to do asyncronously
@@ -226,7 +230,11 @@ if (is(T == void))
 	});
 }
 
-/// Calls some function asyncronously, capturing the result
+/// Calls some function asyncronously, capturing the result.
+/// 
+/// Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
+///   since when the future is actually run the *current* value of the variable is used;
+///   not the one when the call was made!
 /// 
 /// Params:
 ///  task = lazy expression of the task to do asyncronously
