@@ -4,7 +4,7 @@
         "Mai-Lapyst"
     ],
     "copyright": "Copyright © 2023, Mai-Lapyst",
-    "license": "AGPL-2.0-or-later",
+    "license": "AGPL-3.0-or-later",
     "dependencies": {
         "miniasync": {
             "path": ".."
