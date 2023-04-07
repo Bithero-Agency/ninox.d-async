@@ -216,6 +216,26 @@ private:
 /**
  * Runs a function asnycronously
  * 
+ * Note:
+ *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ * 
+ * ---
+ * // Boilerplate neccessary to actualy have access to `makeClosure`.
+ * import async.utils : MakeClosure;
+ * mixin MakeClosure;
+ * 
+ * import core.time : seconds;
+ * import async.timeout : timeout;
+ * void doSome(int secs) { timeout(seconds(secs)).await(); }
+ * 
+ * import async : doAsync;
+ * void myFunc() {
+ *     int secs = 5;
+ *     auto fut = doAsync(makeClosure!"doSome")(secs);
+ *     fut.await();
+ * }
+ * ---
+ * 
  * Params:
  *   fn = the function to run
  * 
@@ -227,6 +247,26 @@ VoidFnFuture doAsync(void function() fn) {
 
 /**
  * Runs a delegate asnycronously
+ * 
+ * Note:
+ *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ * 
+ * ---
+ * // Boilerplate neccessary to actualy have access to `makeClosure`.
+ * import async.utils : MakeClosure;
+ * mixin MakeClosure;
+ * 
+ * import core.time : seconds;
+ * import async.timeout : timeout;
+ * void doSome(int secs) { timeout(seconds(secs)).await(); }
+ * 
+ * import async : doAsync;
+ * void myFunc() {
+ *     int secs = 5;
+ *     auto fut = doAsync(makeClosure!"doSome")(secs);
+ *     fut.await();
+ * }
+ * ---
  * 
  * Params:
  *   dg = the delegate to run
@@ -240,6 +280,26 @@ VoidFnFuture doAsync(void delegate() dg) {
 /**
  * Runs a function asnycronously
  * 
+ * Note:
+ *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ * 
+ * ---
+ * // Boilerplate neccessary to actualy have access to `makeClosure`.
+ * import async.utils : MakeClosure;
+ * mixin MakeClosure;
+ * 
+ * import core.time : seconds;
+ * import async.timeout : timeout;
+ * void doSome(int secs) { timeout(seconds(secs)).await(); }
+ * 
+ * import async : doAsync;
+ * void myFunc() {
+ *     int secs = 5;
+ *     auto fut = doAsync(makeClosure!"doSome")(secs);
+ *     fut.await();
+ * }
+ * ---
+ * 
  * Params:
  *   fn = the function to run
  * 
@@ -252,6 +312,26 @@ FnFuture!T doAsync(T)(T function() fn) {
 /**
  * Runs a delegate asnycronously
  * 
+ * Note:
+ *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ * 
+ * ---
+ * // Boilerplate neccessary to actualy have access to `makeClosure`.
+ * import async.utils : MakeClosure;
+ * mixin MakeClosure;
+ * 
+ * import core.time : seconds;
+ * import async.timeout : timeout;
+ * void doSome(int secs) { timeout(seconds(secs)).await(); }
+ * 
+ * import async : doAsync;
+ * void myFunc() {
+ *     int secs = 5;
+ *     auto fut = doAsync(makeClosure!"doSome")(secs);
+ *     fut.await();
+ * }
+ * ---
+ * 
  * Params:
  *   dg = the delegate to run
  * 
@@ -261,16 +341,35 @@ FnFuture!T doAsync(T)(T delegate() dg) {
 	return new FnFuture!T(() { return Option!T.some(dg()); });
 }
 
-/// Calls some function asyncronously, discarding the result.
-/// 
-/// Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
-///   since when the future is actually run the *current* value of the variable is used;
-///   not the one when the call was made!
-/// 
-/// Params:
-///  task = lazy expression of the task to do asyncronously
-/// 
-/// Returns: a future that, when awaited, runs the task supplied
+/**
+ * Calls some function asyncronously, discarding the result.
+ * 
+ * Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
+ *   since when the future is actually run the *current* value of the variable is used;
+ *   not the one when the call was made!
+ * ---
+ * // Boilerplate neccessary to actualy have access to `makeClosure`.
+ * import async.utils : MakeClosure;
+ * mixin MakeClosure;
+ * 
+ * import core.time : seconds;
+ * import async.timeout : timeout;
+ * void doSome(int secs) { timeout(seconds(secs)).await(); }
+ * 
+ * import async : doAsync;
+ * void myFunc() {
+ *     int secs = 5;
+ *     auto fut = doAsync(makeClosure!"doSome")(secs);
+ *     fut.await();
+ * }
+ * ---
+ * 
+ * 
+ * Params:
+ *  task = lazy expression of the task to do asyncronously
+ * 
+ * Returns: a future that, when awaited, runs the task supplied
+ */
 VoidFuture doAsync(T)(lazy T task)
 if (is(T == void) && !isFunction!T && !isDelegate!T)
 {
@@ -280,16 +379,35 @@ if (is(T == void) && !isFunction!T && !isDelegate!T)
 	});
 }
 
-/// Calls some function asyncronously, capturing the result.
-/// 
-/// Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
-///   since when the future is actually run the *current* value of the variable is used;
-///   not the one when the call was made!
-/// 
-/// Params:
-///  task = lazy expression of the task to do asyncronously
-/// 
-/// Returns: a future that, when awaited, runs the task supplied
+/**
+ * Calls some function asyncronously, capturing the result.
+ * 
+ * Note: do not use expressions such as `doAsync(doWork(some_var))` with this,
+ *   since when the future is actually run the *current* value of the variable is used;
+ *   not the one when the call was made!
+ * 
+ * ---
+ * // Boilerplate neccessary to actualy have access to `makeClosure`.
+ * import async.utils : MakeClosure;
+ * mixin MakeClosure;
+ * 
+ * import core.time : seconds;
+ * import async.timeout : timeout;
+ * void doSome(int secs) { timeout(seconds(secs)).await(); }
+ * 
+ * import async : doAsync;
+ * void myFunc() {
+ *     int secs = 5;
+ *     auto fut = doAsync(makeClosure!"doSome")(secs);
+ *     fut.await();
+ * }
+ * ---
+ * 
+ * Params:
+ *  task = lazy expression of the task to do asyncronously
+ * 
+ * Returns: a future that, when awaited, runs the task supplied
+ */
 ValueFuture!T doAsync(T)(lazy T task)
 if (!is(T == void) && !isFunction!T && !isDelegate!T)
 {
