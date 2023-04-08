@@ -127,7 +127,8 @@ class Scheduler {
 			if (!queue.empty()) {
 				Fiber t = queue.front();
 				queue.removeFront(1);
-				t.call();
+				if (t.state() != Fiber.State.TERM)
+					t.call();
 			}
 
 			pollEvents();
