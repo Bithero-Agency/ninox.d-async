@@ -156,6 +156,19 @@ class Scheduler {
 		this.schedule(f);
 	}
 
+	/// Gets the size of the queue
+	/// 
+	/// Note: since the queue is a $(REF std.container.dlist.DList), this operation takes `O(n)` time.
+	/// 
+	/// Returns: the size of the queue
+	public int queueSize() {
+		int size = 0;
+		foreach (_; this.queue) {
+			size += 1;
+		}
+		return size;
+	}
+
 	/// Handles all io-events
 	///
 	/// Uses strategies like epoll under linux to check for io-events and handling them.
