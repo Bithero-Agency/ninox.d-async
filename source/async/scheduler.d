@@ -175,7 +175,14 @@ class Scheduler {
 	private void pollEvents() {
 		version (linux) {
 			epoll_event[16] events;
-			auto n = epoll_wait(this.epoll_fd, events.ptr, events.length, 0);
+
+			int timeout = 0;
+			if (this.queue.empty()) {
+				// wait infinite on IO when we have no pending tasks in the queue
+				timeout = -1;
+			}
+
+			auto n = epoll_wait(this.epoll_fd, events.ptr, events.length, timeout);
 			if (n == -1) {
 				// THIS IS BAD
 				throw new Exception(format("Epoll failed us; pls look into manual. errno=%d", errno));
