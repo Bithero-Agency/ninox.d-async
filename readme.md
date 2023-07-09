@@ -13,16 +13,16 @@ This library aims to have an small but complete asyncronous solution for dlang p
 It's based around `Furure`'s and `await`; a simple example would be:
 ```d
 import core.time : seconds;
-import async.timeout : timeout;
+import ninox.async.timeout : timeout;
 timeout(seconds(5)).await();
 ```
-Here `timeout` had a signature of `TimeoutFuture timeout(Duration dur);` where `TimeoutFuture` extends `async.Future(T)`.
+Here `timeout` had a signature of `TimeoutFuture timeout(Duration dur);` where `TimeoutFuture` extends `ninox.async.Future(T)`.
 The future itselv implements `T await();` which can be called to await the future and get the result; in out case here `void` since
 a timeout dosnt produce a value.
 
 To use futures, you must be in an fiber, and to achive that you simply schedule your function:
 ```
-import async : gscheduler;
+import ninox.async : gscheduler;
 gscheduler.schedule(&someFunc);
 ```
 
