@@ -26,15 +26,15 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.io.file;
+module ninox.async.io.file;
 
 import std.traits : isConvertibleToString, isNarrowString, isSomeString;
 import std.range : isSomeFiniteCharInputRange;
 import std.internal.cstring : tempCString;
 import std.stdio : writeln;
 
-import async.futures : Future, VoidFuture;
-import async : gscheduler;
+import ninox.async.futures : Future, VoidFuture;
+import ninox.async : gscheduler;
 
 version (Windows) {
     private alias FSChar = WCHAR;
@@ -91,9 +91,9 @@ class FileReadFuture : Future!(void[]) {
                 this.upTo -= r;
             }
 
-            debug (async_fileio) {
+            debug (ninoxasync_fileio) {
                 import std.stdio : writeln;
-                writeln("[async.io.file.FileReadFuture] read ", r, " bytes");
+                writeln("[ninox.async.io.file.FileReadFuture] read ", r, " bytes");
             }
 
             this.value ~= block;
@@ -185,9 +185,9 @@ class FileWriteFuture : VoidFuture {
         auto block = this.buffer[1 .. writesize];
         auto r = write(this.fd, block.ptr, block.length);
 
-        debug (async_fileio) {
+        debug (ninoxasync_fileio) {
             import std.stdio : writeln;
-            writeln("[async.io.file.FileWriteFuture] written ", r, " bytes");
+            writeln("[ninox.async.io.file.FileWriteFuture] written ", r, " bytes");
         }
 
         return this.buffer.length <= 0;

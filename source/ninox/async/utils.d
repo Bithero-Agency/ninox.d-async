@@ -1,4 +1,4 @@
-module async.utils;
+module ninox.async.utils;
 
 class OptionIsNoneException : Exception {
     this (string s, string op) {

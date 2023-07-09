@@ -1,12 +1,12 @@
 {
-	"name": "miniasync",
+	"name": "ninox-d_async",
 	"authors": [
 		"Mai-Lapyst"
 	],
 	"copyright": "Copyright © 2023, Mai-Lapyst",
-	"description": "A minimal D application.",
+	"description": "A minimal asyncronous framework.",
 	"license": "AGPL-3.0-or-later",
-	"homepage": "https://codeark.it/bithero-dlang/miniasync",
+	"homepage": "https://codeark.it/bithero-dlang/ninox.d-async",
 	"targetType": "library",
 	"subPackages": [
 		"./test"

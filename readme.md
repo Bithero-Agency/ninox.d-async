@@ -1,4 +1,4 @@
-# MiniAsync
+# ninox.d-async
 
 A small asyncronous framework for everyone.
 

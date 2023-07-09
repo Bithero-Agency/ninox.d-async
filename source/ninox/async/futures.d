@@ -23,7 +23,7 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.futures;
+module ninox.async.futures;
 
 import core.thread : Fiber;
 
@@ -31,8 +31,8 @@ import std.container : DList, SList;
 import std.traits : isInstanceOf, TemplateArgsOf, isFunction, isDelegate;
 import std.variant : Variant;
 
-import async : gscheduler;
-import async.utils : Option;
+import ninox.async : gscheduler;
+import ninox.async.utils : Option;
 
 /**
  * Represents some work that can be awaited.
@@ -41,7 +41,7 @@ import async.utils : Option;
  * and $(LREF Future#isDone) to actually check if the future is resolved. If one donst have a result,
  * extends $(LREF VoidFuture) instead.
  *
- * For an example, see $(D async.timeout.TimeoutFuture).
+ * For an example, see $(D ninox.async.timeout.TimeoutFuture).
  *
  * See_Also: $(LREF VoidFuture) a specialization of this class for the `void` type.
  */
@@ -82,9 +82,9 @@ abstract class Future(T) {
 
 /// Future returning nothing
 /// 
-/// Usefull for custom futures that dosnt produce anything, like $(D async.timeout.TimeoutFuture).
+/// Usefull for custom futures that dosnt produce anything, like $(D ninox.async.timeout.TimeoutFuture).
 /// 
-/// See_Also: $(D async.Future) for the supertype.
+/// See_Also: $(D ninox.async.Future) for the supertype.
 abstract class VoidFuture : Future!void {
 	protected override void getValue() {}
 }
@@ -219,18 +219,18 @@ private:
  * Runs a function asnycronously
  * 
  * Note:
- *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ *  since delegates arent closures, you need to use $(LREF ninox.async.io.utils.makeClosure) to create a closure.
  * 
  * ---
  * // Boilerplate neccessary to actualy have access to `makeClosure`.
- * import async.utils : MakeClosure;
+ * import ninox.async.utils : MakeClosure;
  * mixin MakeClosure;
  * 
  * import core.time : seconds;
- * import async.timeout : timeout;
+ * import ninox.async.timeout : timeout;
  * void doSome(int secs) { timeout(seconds(secs)).await(); }
  * 
- * import async : doAsync;
+ * import ninox.async : doAsync;
  * void myFunc() {
  *     int secs = 5;
  *     auto fut = doAsync(makeClosure!"doSome")(secs);
@@ -251,18 +251,18 @@ VoidFnFuture doAsync(void function() fn) {
  * Runs a delegate asnycronously
  * 
  * Note:
- *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ *  since delegates arent closures, you need to use $(LREF ninox.async.io.utils.makeClosure) to create a closure.
  * 
  * ---
  * // Boilerplate neccessary to actualy have access to `makeClosure`.
- * import async.utils : MakeClosure;
+ * import ninox.async.utils : MakeClosure;
  * mixin MakeClosure;
  * 
  * import core.time : seconds;
- * import async.timeout : timeout;
+ * import ninox.async.timeout : timeout;
  * void doSome(int secs) { timeout(seconds(secs)).await(); }
  * 
- * import async : doAsync;
+ * import ninox.async : doAsync;
  * void myFunc() {
  *     int secs = 5;
  *     auto fut = doAsync(makeClosure!"doSome")(secs);
@@ -283,18 +283,18 @@ VoidFnFuture doAsync(void delegate() dg) {
  * Runs a function asnycronously
  * 
  * Note:
- *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ *  since delegates arent closures, you need to use $(LREF ninox.async.io.utils.makeClosure) to create a closure.
  * 
  * ---
  * // Boilerplate neccessary to actualy have access to `makeClosure`.
- * import async.utils : MakeClosure;
+ * import ninox.async.utils : MakeClosure;
  * mixin MakeClosure;
  * 
  * import core.time : seconds;
- * import async.timeout : timeout;
+ * import ninox.async.timeout : timeout;
  * void doSome(int secs) { timeout(seconds(secs)).await(); }
  * 
- * import async : doAsync;
+ * import ninox.async : doAsync;
  * void myFunc() {
  *     int secs = 5;
  *     auto fut = doAsync(makeClosure!"doSome")(secs);
@@ -315,18 +315,18 @@ FnFuture!T doAsync(T)(T function() fn) {
  * Runs a delegate asnycronously
  * 
  * Note:
- *  since delegates arent closures, you need to use $(LREF async.io.utils.makeClosure) to create a closure.
+ *  since delegates arent closures, you need to use $(LREF ninox.async.io.utils.makeClosure) to create a closure.
  * 
  * ---
  * // Boilerplate neccessary to actualy have access to `makeClosure`.
- * import async.utils : MakeClosure;
+ * import ninox.async.utils : MakeClosure;
  * mixin MakeClosure;
  * 
  * import core.time : seconds;
- * import async.timeout : timeout;
+ * import ninox.async.timeout : timeout;
  * void doSome(int secs) { timeout(seconds(secs)).await(); }
  * 
- * import async : doAsync;
+ * import ninox.async : doAsync;
  * void myFunc() {
  *     int secs = 5;
  *     auto fut = doAsync(makeClosure!"doSome")(secs);
@@ -351,14 +351,14 @@ FnFuture!T doAsync(T)(T delegate() dg) {
  *   not the one when the call was made!
  * ---
  * // Boilerplate neccessary to actualy have access to `makeClosure`.
- * import async.utils : MakeClosure;
+ * import ninox.async.utils : MakeClosure;
  * mixin MakeClosure;
  * 
  * import core.time : seconds;
- * import async.timeout : timeout;
+ * import ninox.async.timeout : timeout;
  * void doSome(int secs) { timeout(seconds(secs)).await(); }
  * 
- * import async : doAsync;
+ * import ninox.async : doAsync;
  * void myFunc() {
  *     int secs = 5;
  *     auto fut = doAsync(makeClosure!"doSome")(secs);
@@ -390,14 +390,14 @@ if (is(T == void) && !isFunction!T && !isDelegate!T)
  * 
  * ---
  * // Boilerplate neccessary to actualy have access to `makeClosure`.
- * import async.utils : MakeClosure;
+ * import ninox.async.utils : MakeClosure;
  * mixin MakeClosure;
  * 
  * import core.time : seconds;
- * import async.timeout : timeout;
+ * import ninox.async.timeout : timeout;
  * void doSome(int secs) { timeout(seconds(secs)).await(); }
  * 
- * import async : doAsync;
+ * import ninox.async : doAsync;
  * void myFunc() {
  *     int secs = 5;
  *     auto fut = doAsync(makeClosure!"doSome")(secs);

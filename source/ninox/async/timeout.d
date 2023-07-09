@@ -23,10 +23,10 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.timeout;
+module ninox.async.timeout;
 
 import core.time : Duration;
-import async.futures : VoidFuture;
+import ninox.async.futures : VoidFuture;
 
 /**
  * A future for a timeout. Use $(LREF timeout) to create it.

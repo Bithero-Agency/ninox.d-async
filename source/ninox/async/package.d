@@ -23,12 +23,12 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async;
+module ninox.async;
 
-public import async.scheduler;
-public import async.timeout;
-public import async.io;
-public import async.futures;
+public import ninox.async.scheduler;
+public import ninox.async.timeout;
+public import ninox.async.io;
+public import ninox.async.futures;
 
 /// The global scheduler.
 /// Used by nearly all the code to re-schedule fibers.

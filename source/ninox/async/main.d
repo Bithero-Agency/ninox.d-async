@@ -1,4 +1,4 @@
-module async.main;
+module ninox.async.main;
 
 /// Global to store the exit code for the asyncronous main
 int g_async_exitcode = 0;
@@ -11,7 +11,7 @@ string[] g_async_args;
  *
  * Example:
  * ---
- * import async;
+ * import ninox.async;
  * mixin AsyncMain!"my_main";
  * int my_main(string[] args) {
  *     import core.time : seconds;

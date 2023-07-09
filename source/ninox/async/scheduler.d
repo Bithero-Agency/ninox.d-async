@@ -23,7 +23,7 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.scheduler;
+module ninox.async.scheduler;
 
 import core.thread : Fiber;
 import std.container : DList;
@@ -193,33 +193,33 @@ class Scheduler {
 				auto flags = e.events;
 				if (flags & EPOLLIN) {
 					// ready to read
-					debug (async_scheduler_pollEvents) {
+					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[async.scheduler.Scheduler.pollEvents] got EPOLLIN for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLIN for fd=", e.data.fd);
 					}
 					this.enqueueIoWaiter(e.data.fd);
 				}
 				else if (flags & EPOLLOUT) {
 					// ready to write
-					debug (async_scheduler_pollEvents) {
+					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[async.scheduler.Scheduler.pollEvents] got EPOLLOUT for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLOUT for fd=", e.data.fd);
 					}
 					this.enqueueIoWaiter(e.data.fd);
 				}
 
 				if (flags & EPOLLERR) {
-					debug (async_scheduler_pollEvents) {
+					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", e.data.fd);
 					}
 
 					// TODO: some error here...
 				}
 				if (flags & EPOLLHUP) {
-					debug (async_scheduler_pollEvents) {
+					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", e.data.fd);
 					}
 
 					// TODO: hangup...

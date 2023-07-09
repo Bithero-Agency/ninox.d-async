@@ -18,14 +18,14 @@
 /** 
  * This module provides asyncronous access to IO
  *
- *  - for file IO see $(LREF async.io.file)
+ *  - for file IO see $(LREF ninox.async.io.file)
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
  * Copyright: Copyright (C) 2023 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.io;
+module ninox.async.io;
 
-public import async.io.file;
-public import async.io.socket;
+public import ninox.async.io.file;
+public import ninox.async.io.socket;

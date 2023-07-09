@@ -1,6 +1,6 @@
 import std.stdio : writeln;
 import core.thread : Fiber;
-import async;
+import ninox.async;
 
 /// Test function 1; waits 5 seconds before ending
 void doWork() {
@@ -26,7 +26,7 @@ void readFile() {
 	//writeln(cast(char[]) data);
 	writeln("done reading: ", data.length);
 
-	import async.utils : Option;
+	import ninox.async.utils : Option;
 	auto fut = new FnFuture!int(() {
 		import core.time : seconds;
 		timeout(seconds(5)).await();
@@ -37,7 +37,7 @@ void readFile() {
 }
 
 void echoServer() {
-	import async.io.socket;
+	import ninox.async.io.socket;
 	import std.socket;
 	auto l = new AsyncSocket(AddressFamily.INET, SocketType.STREAM);
 	l.bind(new InternetAddress("localhost", 8080));
@@ -70,12 +70,12 @@ long doTimeout2(int secs) {
 	return secs * 2;
 }
 
-import async.utils : MakeClosure;
+import ninox.async.utils : MakeClosure;
 mixin MakeClosure;
 
 void testAsyncFn() {
 	import std.container : DList;
-	import async : doAsync;
+	import ninox.async : doAsync;
 	DList!(ValueFuture!int) futures;
 	int[] secs = [5, 8, 10];
 	foreach (sec; secs) {

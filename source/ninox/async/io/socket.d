@@ -23,13 +23,13 @@
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
-module async.io.socket;
+module ninox.async.io.socket;
 
 import std.socket;
 import core.thread : Fiber;
 
-import async : gscheduler;
-import async.futures : ValueFuture, Future, VoidFuture;
+import ninox.async : gscheduler;
+import ninox.async.futures : ValueFuture, Future, VoidFuture;
 
 version (Posix) {
     import core.sys.posix.sys.socket, core.sys.posix.sys.ioctl;
