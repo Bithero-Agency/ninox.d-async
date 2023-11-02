@@ -10,8 +10,5 @@
 	"dependencies": {
 		"ninox-d_std:optional": "~>1.4.0"
 	},
-	"targetType": "library",
-	"subPackages": [
-		"./test"
-	]
+	"targetType": "library"
 }
