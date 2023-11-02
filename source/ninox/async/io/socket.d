@@ -117,6 +117,16 @@ class SocketRecvFuture : ValueFuture!size_t {
         this.value = 0; // TODO: ???
         return true;
     }
+
+    override size_t await() {
+        while (!this.isDone()) {
+            // reschedule already done by isDone() via addIoWaiter
+
+            // Yield the current fiber until the task itself is done
+            Fiber.yield();
+        }
+        return this.getValue();
+    }
 }
 
 /**
