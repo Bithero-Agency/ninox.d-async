@@ -166,6 +166,16 @@ class SocketSendFuture : VoidFuture {
         }
         return true;
     }
+
+    override void await() {
+        while (!this.isDone()) {
+            // reschedule already done by isDone() via addIoWaiter
+
+            // Yield the current fiber until the task itself is done
+            Fiber.yield();
+        }
+        return this.getValue();
+    }
 }
 
 /**
