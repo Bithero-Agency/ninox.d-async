@@ -32,7 +32,7 @@ import std.traits : isInstanceOf, TemplateArgsOf, isFunction, isDelegate;
 import std.variant : Variant;
 
 import ninox.async : gscheduler;
-import ninox.async.utils : Option;
+import ninox.std.optional : Optional;
 
 /**
  * Represents some work that can be awaited.
@@ -108,15 +108,15 @@ abstract class ValueFuture(T) : Future!T {
 }
 
 private struct CallbackCallable(T) {
-	void opAssign(Option!T function() fn) pure nothrow @nogc @safe {
+	void opAssign(Optional!T function() fn) pure nothrow @nogc @safe {
 		() @trusted { this.fn = fn; }();
 		this.kind = Kind.FN;
 	}
-	void opAssign(Option!T delegate() dg) pure nothrow @nogc @safe {
+	void opAssign(Optional!T delegate() dg) pure nothrow @nogc @safe {
 		() @trusted { this.dg = dg; }();
 		this.kind = Kind.DG;
 	}
-	Option!T opCall() {
+	Optional!T opCall() {
 		switch (kind) {
 			case Kind.FN: return this.fn();
 			case Kind.DG: return this.dg();
@@ -128,8 +128,8 @@ private:
 	enum Kind { NO, FN, DG };
 	Kind kind = Kind.NO;
 	union {
-		Option!T function() fn;
-		Option!T delegate() dg;
+		Optional!T function() fn;
+		Optional!T delegate() dg;
 	}
 }
 
@@ -137,11 +137,11 @@ private:
 /// If you want to return no value (i.e. useing `void`), use $(LREF VoidFnFuture) instead.
 class FnFuture(T) : ValueFuture!T {
 
-	this(Option!T function() fn) nothrow {
+	this(Optional!T function() fn) nothrow {
 		setCallback(fn);
 	}
 
-	this(Option!T delegate() dg) nothrow {
+	this(Optional!T delegate() dg) nothrow {
 		setCallback(dg);
 	}
 
@@ -156,10 +156,10 @@ class FnFuture(T) : ValueFuture!T {
 
 private:
 	CallbackCallable!T cb;
-	final void setCallback(Option!T function() fn) nothrow @nogc {
+	final void setCallback(Optional!T function() fn) nothrow @nogc {
 		cb = fn;
 	}
-	final void setCallback(Option!T delegate() dg) nothrow @nogc {
+	final void setCallback(Optional!T delegate() dg) nothrow @nogc {
 		cb = dg;
 	}
 }
@@ -308,7 +308,7 @@ VoidFnFuture doAsync(void delegate() dg) {
  * Returns: a future that, when awaited, runs the function and returns the result of it
  */
 FnFuture!T doAsync(T)(T function() fn) {
-	return new FnFuture!T(() { return Option!T.some(fn()); });
+	return new FnFuture!T(() { return Optional!T.some(fn()); });
 }
 
 /**
@@ -340,7 +340,7 @@ FnFuture!T doAsync(T)(T function() fn) {
  * Returns: a future that, when awaited, runs the delegate and returns the result of it
  */
 FnFuture!T doAsync(T)(T delegate() dg) {
-	return new FnFuture!T(() { return Option!T.some(dg()); });
+	return new FnFuture!T(() { return Optional!T.some(dg()); });
 }
 
 /**
@@ -414,7 +414,7 @@ ValueFuture!T doAsync(T)(lazy T task)
 if (!is(T == void) && !isFunction!T && !isDelegate!T)
 {
 	return new FnFuture!T(() {
-		return Option!T.some(task);
+		return Optional!T.some(task);
 	});
 }
 
@@ -489,7 +489,7 @@ if (isInstanceOf!(DList, T) || isInstanceOf!(SList, T))
 			auto r = e.await();
 			res.insertBack(r);
 		}
-		return Option!(DList!R).some(res);
+		return Optional!(DList!R).some(res);
 	});
 }
 
@@ -519,6 +519,6 @@ FnFuture!(DList!R) captureAll(R, T...)(T args)
 			static if (is(R == Variant)) { res.insertBack(Variant(r)); }
 			else { res.insertBack(r); }
 		}
-		return Option!(DList!R).some(res);
+		return Optional!(DList!R).some(res);
 	});
 }

@@ -26,11 +26,11 @@ void readFile() {
 	//writeln(cast(char[]) data);
 	writeln("done reading: ", data.length);
 
-	import ninox.async.utils : Option;
+	import ninox.std.optional : Optional;
 	auto fut = new FnFuture!int(() {
 		import core.time : seconds;
 		timeout(seconds(5)).await();
-		return Option!int.some(42);
+		return Optional!int.some(42);
 	});
 	auto d = fut.await();
 	writeln("done fnfut: ", d);
