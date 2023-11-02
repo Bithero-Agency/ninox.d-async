@@ -170,6 +170,13 @@ class SocketRecvFuture : ValueFuture!size_t {
                     }
                     return this.value;
                 }
+
+                case ResumeReason.io_error: {
+                    throw new SocketRecvException(SocketRecvException.Kind.error);
+                }
+                case ResumeReason.io_hup: {
+                    throw new SocketRecvException(SocketRecvException.Kind.hup);
+                }
             }
         }
         return this.getValue();

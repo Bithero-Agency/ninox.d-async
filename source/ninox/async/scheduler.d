@@ -56,6 +56,8 @@ enum ResumeReason {
 	normal,
 	io_ready,
 	io_timeout,
+	io_error,
+	io_hup,
 }
 
 static Duration TIMEOUT_INFINITY = dur!"hnsecs"(-1);
@@ -299,19 +301,33 @@ class Scheduler {
 
 				int fd = cast(int) (e.data.u64 & 0xffffffff);
 				int extra = cast(int) (e.data.u64 >> 32);
+				if (extra != 0) {
+					// if extra is non-zero; we have an timeout timerfd in fd, and extra the io-fd assosicated
+					// with it. delete io-waiter here so we dont trigger the fiber in the future
+					this.io_waiters[fd] = null;
+				}
 
-				if (flags & EPOLLIN) {
+				if (flags & EPOLLERR) {
+					debug (ninoxasync_scheduler_pollEvents) {
+						import std.stdio : writeln;
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", fd, " extra=", extra);
+					}
+					this.enqueueIoWaiter(fd, ResumeReason.io_error);
+				}
+				else if (flags & EPOLLHUP) {
+					debug (ninoxasync_scheduler_pollEvents) {
+						import std.stdio : writeln;
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", fd, " extra=", extra);
+					}
+					this.enqueueIoWaiter(fd, ResumeReason.io_hup);
+				}
+				else if (flags & EPOLLIN) {
 					// ready to read
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
 						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLIN for fd=", fd, " extra=", extra);
 					}
 					this.enqueueIoWaiter(fd, extra != 0 ? ResumeReason.io_timeout : ResumeReason.io_ready);
-					if (extra != 0) {
-						// if extra is non-zero; we have an timeout timerfd in fd, and extra the io-fd assosicated
-						// with it. delete io-waiter here so we dont trigger the fiber in the future
-						this.io_waiters[fd] = null;
-					}
 				}
 				else if (flags & EPOLLOUT) {
 					// ready to write
@@ -320,23 +336,6 @@ class Scheduler {
 						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLOUT for fd=", fd, " extra=", extra);
 					}
 					this.enqueueIoWaiter(fd, ResumeReason.io_ready);
-				}
-
-				if (flags & EPOLLERR) {
-					debug (ninoxasync_scheduler_pollEvents) {
-						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", fd, " extra=", extra);
-					}
-
-					// TODO: some error here...
-				}
-				if (flags & EPOLLHUP) {
-					debug (ninoxasync_scheduler_pollEvents) {
-						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", fd, " extra=", extra);
-					}
-
-					// TODO: hangup...
 				}
 			}
 		}
