@@ -119,11 +119,11 @@ class FileReadFuture : Future!(void[]) {
         this.hasUpTo = upTo != size_t.max;
     }
 
-    protected override void[] getValue() {
+    protected void[] getValue() {
         return this.value;
     }
 
-    version (Posix) protected override bool isDone() {
+    version (Posix) protected bool isDone() {
         // read all available bytes...
         int count = 0;
         ioctl(this.fd, FIONREAD, &count);
@@ -159,7 +159,7 @@ class FileReadFuture : Future!(void[]) {
         return true;
     }
 
-    override void[] await() {
+    void[] await() {
         while (!this.isDone()) {
             // reschedule already done by isDone() via addIoWaiter
 
@@ -248,7 +248,7 @@ private FileReadFuture readAsyncImpl(scope const(char)[] name, scope const(FSCha
  *
  * See_Also: $(LREF writeAsync) to create a instance of this future
  */
-class FileWriteFuture : VoidFuture {
+class FileWriteFuture : Future!void {
     private immutable int fd;
     private const void[] buffer;
 
@@ -257,7 +257,7 @@ class FileWriteFuture : VoidFuture {
         this.buffer = buffer;
     }
 
-    version (Posix) override bool isDone() {
+    version (Posix) bool isDone() {
         import std.algorithm : min;
         auto writesize = min(this.buffer.length, MAX_FILE_WRITEBLOCK);
 
@@ -272,7 +272,7 @@ class FileWriteFuture : VoidFuture {
         return this.buffer.length <= 0;
     }
 
-    override void await() {
+    void await() {
         while (!this.isDone()) {
             // reschedule already done by isDone() via addIoWaiter
 

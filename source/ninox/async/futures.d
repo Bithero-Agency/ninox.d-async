@@ -36,16 +36,25 @@ import ninox.std.optional : Optional;
 
 /**
  * Represents some work that can be awaited.
+ * 
+ * As startinpoint you can use $(D ninox.async.futures.BasicFuture).
+ */
+interface Future(T) {
+	T await();
+}
+
+/**
+ * Represents some work that can be awaited.
  *
- * To implement this, one has to implement $(LREF Future#getValue) to accqiure the result,
- * and $(LREF Future#isDone) to actually check if the future is resolved. If one donst have a result,
+ * To implement this, one has to implement $(LREF BasicFuture#getValue) to accqiure the result,
+ * and $(LREF BasicFuture#isDone) to actually check if the future is resolved. If one donst have a result,
  * extends $(LREF VoidFuture) instead.
  *
  * For an example, see $(D ninox.async.timeout.TimeoutFuture).
  *
  * See_Also: $(LREF VoidFuture) a specialization of this class for the `void` type.
  */
-abstract class Future(T) {
+abstract class BasicFuture(T) : Future!T {
 	/**
 	 * Returns the value this future resolves to.
 	 * Gets called by $(LREF await) once detected that the future has been resolved via $(LREF isDone).
@@ -91,21 +100,21 @@ abstract class Future(T) {
  * 
  * Usefull for custom futures that dosnt produce anything, like $(D ninox.async.timeout.TimeoutFuture).
  * 
- * See_Also: $(D ninox.async.Future) for the supertype.
+ * See_Also: $(D ninox.async.BasicFuture) for the supertype.
  */
-abstract class VoidFuture : Future!void {
+abstract class VoidFuture : BasicFuture!void {
 	protected override void getValue() {}
 }
 
 /**
  * Basic future that holds a value
- * For infos how to implement a future, see $(LREF Future).
+ * For infos how to implement a future, see $(LREF BasicFuture).
  * 
  * Note: if you want a `ValueFuture!void`, use $(LREF VoidFuture) instead.
  * 
  * See_Also: $(LREF VoidFuture)
  */
-abstract class ValueFuture(T) : Future!T {
+abstract class ValueFuture(T) : BasicFuture!T {
 	protected T value;
 
 	/**
