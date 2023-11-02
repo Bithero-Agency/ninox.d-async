@@ -68,6 +68,31 @@ static int MAX_SOCK_WRITEBLOCK = 4069;
 static Duration DEFAULT_SOCK_DATA_TIMEOUT = dur!"seconds"(30);
 alias SOCK_TIMEOUT_INFINITY = TIMEOUT_INFINITY;
 
+/// Exception for SocketRecvFuture
+class SocketRecvException : Exception {
+    enum Kind { error, hup, timeout }
+
+    @property Kind kind() const {
+        return this._kind;
+    }
+
+private:
+    Kind _kind;
+
+    @nogc @safe pure nothrow string getMsg() {
+        final switch (this._kind) {
+            case Kind.error: { return "Error while trying to read or while waiting"; }
+            case Kind.hup: { return "Reading failed because peer hung up"; }
+            case Kind.timeout: { return "Read timeout reached without any data recieved"; }
+        }
+    }
+
+    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
+        this._kind = kind;
+        super(this.getMsg(), file, line, null);
+    }
+}
+
 /**
  * Future for accepting data from an socket.
  * Use $(LREF AsyncSocket.recieve) to aqquire an instance of this.
@@ -79,6 +104,7 @@ class SocketRecvFuture : ValueFuture!size_t {
     private size_t remaining;
     private Duration read_timeout;
     private SocketFlags flags;
+    private bool strict = false;
 
     /// Reads into a predefined buffer
     this(Socket sock, const(void[]) buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
@@ -139,8 +165,10 @@ class SocketRecvFuture : ValueFuture!size_t {
                 }
 
                 case ResumeReason.io_timeout: {
-                    // read timeout
-                    return this.getValue();
+                    if (this.strict && this.value <= 0) {
+                        throw new SocketRecvException(SocketRecvException.Kind.timeout);
+                    }
+                    return this.value;
                 }
             }
         }
@@ -384,6 +412,22 @@ class AsyncSocket {
      */
     SocketRecvFuture recieveNoTimeout(scope void[] buf, SocketFlags flags = SocketFlags.NONE) {
         return this.recieve(buf, SOCK_TIMEOUT_INFINITY, flags);
+    }
+
+    /**
+     * Much like $(D recieve) but instead of returning after a timeout, it instead throws a $(D ninox.async.io.socket.SocketRecvException).
+     *
+     * Params:
+     *  buf = the buffer to read into; recieves at max the length of this in bytes
+     *  read_timeout = timeout after which the data that was read up until that point should be returned; default: 30 seconds
+     *  flags = flags for the recieve operation
+     * 
+     * Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
+     */
+    SocketRecvFuture recieveStrictTimeout(scope void[] buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
+        auto f = new SocketRecvFuture(this.sock, buf, read_timeout, flags);
+        f.strict = true;
+        return f;
     }
 
     /// Sets the keep alive time & interval
