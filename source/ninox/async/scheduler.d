@@ -153,12 +153,14 @@ class Scheduler {
 		}
 	}
 
-	/// Schedules a fiber.
-	/// 
-	/// Note: The caller must ensure not to schedule the same fiber twice.
-	// 
-	/// Params:
-	///     f = the fiber to be scheduled at a later point in time
+	/**
+	 * Schedules a fiber.
+	 * 
+	 * Note: The caller must ensure not to schedule the same fiber twice.
+	 *
+	 * Params:
+	 *     f = the fiber to be scheduled at a later point in time
+	 */
 	void schedule(Fiber f) {
 		this.schedule(f, ResumeReason.normal);
 	}
@@ -167,15 +169,17 @@ class Scheduler {
 		this.queue.insertBack(Task(f, reason));
 	}
 
-	/// Schedules a function.
-	/// 
-	/// Note: This creates an $(STDREF Fiber, core,thread) internaly and calls `schedule(Fiber f)`.
-	/// 
-	/// Params:
-	///  fn = the function to schedule
-	/// 
-	/// In:
-	///  fn must not be null
+	/**
+	 * Schedules a function.
+	 * 
+	 * Note: This creates an $(STDREF Fiber, core,thread) internaly and calls `schedule(Fiber f)`.
+	 * 
+	 * Params:
+	 *  fn = the function to schedule
+	 * 
+	 * In:
+	 *  fn must not be null
+	 */
 	void schedule(void function() fn)
 	in {
 		assert(fn);
@@ -184,15 +188,17 @@ class Scheduler {
 		this.schedule(new Fiber(fn));
 	}
 
-	/// Schedules a delegate.
-	///
-	/// Note: This creates an $(STDREF Fiber, core,thread) internaly and calls `schedule(Fiber f)`.
-	/// 
-	/// Params:
-	///  dg = the delegate to schedule
-	/// 
-	/// In:
-	///  dg must not be null
+	/**
+	 * Schedules a delegate.
+	 *
+	 * Note: This creates an $(STDREF Fiber, core,thread) internaly and calls `schedule(Fiber f)`.
+	 * 
+	 * Params:
+	 *  dg = the delegate to schedule
+	 * 
+	 * In:
+	 *  dg must not be null
+	 */
 	void schedule(void delegate() dg)
 	in {
 		assert(dg);
@@ -205,9 +211,11 @@ class Scheduler {
 		return !queue.empty() || io_waiters.length > 0;
 	}
 
-	/// The main loop.
-	///
-	/// This method is the main eventloop and only returns once all fibers in the scheduler have been completed.
+	/**
+	 * The main loop.
+	 *
+	 * This method is the main eventloop and only returns once all fibers in the scheduler have been completed.
+	 */
 	void loop() {
 		// As long as our queue is not empty, we take the front most fiber and call it
 		// Thanks to the spin-lock like code in Future.await(), if the work isnt done, we reschedule.
@@ -225,13 +233,15 @@ class Scheduler {
 		}
 	}
 
-	/// Reschedules an fiber waiting for io
-	/// 
-	/// This method tries to get the fiber waiting for io of `fd`, and enqueuing it by calling $(LREF schedule).
-	/// 
-	/// Params:
-	///     fd = the filedescriptor to identifiy the fiber by
-	///     reason = the reason why the IoWaiter was enqueued
+	/**
+	 * Reschedules an fiber waiting for io
+	 * 
+	 * This method tries to get the fiber waiting for io of `fd`, and enqueuing it by calling $(LREF schedule).
+	 * 
+	 * Params:
+	 *     fd = the filedescriptor to identifiy the fiber by
+	 *     reason = the reason why the IoWaiter was enqueued
+	 */
 	private void enqueueIoWaiter(int fd, ResumeReason reason) {
 		if (io_waiters[fd] is null) {
 			throw new Exception(format("Cannot enqueue io waiter for fd=%d; no such waiter exists...", fd));
@@ -247,11 +257,13 @@ class Scheduler {
 		this.schedule(f, reason);
 	}
 
-	/// Gets the size of the queue
-	/// 
-	/// Note: since the queue is a $(REF std.container.dlist.DList), this operation takes `O(n)` time.
-	/// 
-	/// Returns: the size of the queue
+	/**
+	 * Gets the size of the queue
+	 * 
+	 * Note: since the queue is a $(REF std.container.dlist.DList), this operation takes `O(n)` time.
+	 * 
+	 * Returns: the size of the queue
+	 */
 	public int queueSize() {
 		int size = 0;
 		foreach (_; this.queue) {
@@ -260,9 +272,11 @@ class Scheduler {
 		return size;
 	}
 
-	/// Handles all io-events
-	///
-	/// Uses strategies like epoll under linux to check for io-events and handling them.
+	/**
+	 * Handles all io-events
+	 *
+	 * Uses strategies like epoll under linux to check for io-events and handling them.
+	 */
 	private void pollEvents() {
 		version (linux) {
 			epoll_event[16] events;

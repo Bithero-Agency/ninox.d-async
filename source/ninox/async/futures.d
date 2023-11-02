@@ -46,28 +46,34 @@ import ninox.std.optional : Optional;
  * See_Also: $(LREF VoidFuture) a specialization of this class for the `void` type.
  */
 abstract class Future(T) {
-	/// Returns the value this future resolves to.
-	/// Gets called by $(LREF await) once detected that the future has been resolved via $(LREF isDone).
-	/// 
-	/// Note: Often times this is implemented as an plain getter to an member variable.
-	/// 
-	/// See_Also: $(LREF await) for the only caller this function should have
+	/**
+	 * Returns the value this future resolves to.
+	 * Gets called by $(LREF await) once detected that the future has been resolved via $(LREF isDone).
+	 * 
+	 * Note: Often times this is implemented as an plain getter to an member variable.
+	 * 
+	 * See_Also: $(LREF await) for the only caller this function should have
+	 */
 	protected abstract T getValue();
 
-	/// Returns true once the future has been resolved.
-	/// Gets repeatly called by $(LREF await) to check if the current fiber can continue.
-	/// 
-	/// Returns: the state if the future has been resolved or not
-	/// 
-	/// See_Also: $(LREF await) for the only caller this function should have
+	/**
+	 * Returns true once the future has been resolved.
+	 * Gets repeatly called by $(LREF await) to check if the current fiber can continue.
+	 * 
+	 * Returns: the state if the future has been resolved or not
+	 * 
+	 * See_Also: $(LREF await) for the only caller this function should have
+	 */
 	protected abstract bool isDone();
 
-	/// Waits on the task until it provides a value,
-	/// by using a spin-lock like approach
-	/// 
-	/// Returns: the value this future produces.
-	/// 
-	/// See_Also: $(LREF getValue) for the return value and $(LREF isDone) for the check if the future is resolved.
+	/**
+	 * Waits on the task until it provides a value,
+	 * by using a spin-lock like approach
+	 * 
+	 * Returns: the value this future produces.
+	 * 
+	 * See_Also: $(LREF getValue) for the return value and $(LREF isDone) for the check if the future is resolved.
+	 */
 	T await() {
 		while (!this.isDone()) {
 			// reschedule the current fiber
@@ -80,28 +86,34 @@ abstract class Future(T) {
 	}
 }
 
-/// Future returning nothing
-/// 
-/// Usefull for custom futures that dosnt produce anything, like $(D ninox.async.timeout.TimeoutFuture).
-/// 
-/// See_Also: $(D ninox.async.Future) for the supertype.
+/**
+ * Future returning nothing
+ * 
+ * Usefull for custom futures that dosnt produce anything, like $(D ninox.async.timeout.TimeoutFuture).
+ * 
+ * See_Also: $(D ninox.async.Future) for the supertype.
+ */
 abstract class VoidFuture : Future!void {
 	protected override void getValue() {}
 }
 
-/// Basic future that holds a value
-/// For infos how to implement a future, see $(LREF Future).
-/// 
-/// Note: if you want a `ValueFuture!void`, use $(LREF VoidFuture) instead.
-/// 
-/// See_Also: $(LREF VoidFuture)
+/**
+ * Basic future that holds a value
+ * For infos how to implement a future, see $(LREF Future).
+ * 
+ * Note: if you want a `ValueFuture!void`, use $(LREF VoidFuture) instead.
+ * 
+ * See_Also: $(LREF VoidFuture)
+ */
 abstract class ValueFuture(T) : Future!T {
 	protected T value;
 
-	/// Returns the stored value;
-	/// set it in your overwritten $(LREF isDone) method.
-	/// 
-	/// Return: the stored value
+	/**
+	 * Returns the stored value;
+	 * set it in your overwritten $(LREF isDone) method.
+	 * 
+	 * Return: the stored value
+	 */
 	protected override T getValue() {
 		return this.value;
 	}
@@ -133,8 +145,10 @@ private:
 	}
 }
 
-/// Future that uses an callback to recieve the value and state if it is resolved.
-/// If you want to return no value (i.e. useing `void`), use $(LREF VoidFnFuture) instead.
+/**
+ * Future that uses an callback to recieve the value and state if it is resolved.
+ * If you want to return no value (i.e. useing `void`), use $(LREF VoidFnFuture) instead.
+ */
 class FnFuture(T) : ValueFuture!T {
 
 	this(Optional!T function() fn) nothrow {
@@ -190,8 +204,10 @@ private:
 	}
 }
 
-/// Future that uses an callback to recieve the state if it is resolved.
-/// If you want to return a value, use $(LREF FnFuture) instead.
+/**
+ * Future that uses an callback to recieve the state if it is resolved.
+ * If you want to return a value, use $(LREF FnFuture) instead.
+ */
 class VoidFnFuture : VoidFuture {
 	this(bool function() fn) nothrow {
 		setCallback(fn);

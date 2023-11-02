@@ -306,96 +306,120 @@ class AsyncSocket {
         return new SocketAcceptFuture(this.sock);
     }
 
-    /// Shutdowns the socket syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.shutdown.html, std.socket.Socket.shutdown)
+    /**
+     * Shutdowns the socket syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.shutdown.html, std.socket.Socket.shutdown)
+     */
     void shutdownSync(SocketShutdown how) {
         this.sock.shutdown(how);
     }
 
-    /// Drops any connections syncronously
-    /// Use $(LREF shutdownSync) instead to cleanly shutdown the connection.
-    ///
-    /// See_Also: $(STDLINK std/socket/socket.close.html, std.socket.Socket.close), $(LREF shutdownSync)
+    /**
+     * Drops any connections syncronously
+     * Use $(LREF shutdownSync) instead to cleanly shutdown the connection.
+     *
+     * See_Also: $(STDLINK std/socket/socket.close.html, std.socket.Socket.close), $(LREF shutdownSync)
+     */
     void closeSync() {
         this.sock.close();
     }
 
-    /// Remote endpoint `Address`.
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.remoteAddress.html, std.socket.Socket.remoteAddress).
+    /**
+     * Remote endpoint `Address`.
+     * 
+     * See_Also: $(STDLINK std/socket/socket.remoteAddress.html, std.socket.Socket.remoteAddress).
+     */
     @property Address remoteAddress() {
         return this.sock.remoteAddress();
     }
 
-    /// Local endpoint `Address`.
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.localAddress.html, std.socket.Socket.localAddress).
+    /**
+     * Local endpoint `Address`.
+     * 
+     * See_Also: $(STDLINK std/socket/socket.localAddress.html, std.socket.Socket.localAddress).
+     */
     @property Address localAddress() {
         return this.sock.remoteAddress();
     }
 
-    /// Sends data syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.send.html, std.socket.Socket.send).
+    /**
+     * Sends data syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.send.html, std.socket.Socket.send).
+     */
     ptrdiff_t sendSync(scope const(void)[] buf, SocketFlags flags) {
         return this.sock.send(buf, flags);
     }
 
-    /// Sends data syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.send.html, std.socket.Socket.send).
+    /**
+     * Sends data syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.send.html, std.socket.Socket.send).
+     */
     ptrdiff_t sendSync(scope const(void)[] buf) {
         return this.sock.send(buf);
     }
 
-    /// Sends data asyncronously
-    /// 
-    /// Params:
-    ///  buf = the buffer to send
-    ///  flags = flags for the send operation
-    /// 
-    /// Return: a future that can be awaited to send the data
+    /**
+     * Sends data asyncronously
+     * 
+     * Params:
+     *  buf = the buffer to send
+     *  flags = flags for the send operation
+     * 
+     * Return: a future that can be awaited to send the data
+     */
     SocketSendFuture send(scope const(void)[] buf, SocketFlags flags = SocketFlags.NONE) {
         return new SocketSendFuture(this.sock, buf, flags);
     }
 
-    /// Sends data syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+    /**
+     * Sends data syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+     */
     ptrdiff_t sendToSync(scope const(void)[] buf, SocketFlags flags, Address to) {
         return this.sock.sendTo(buf, flags, to);
     }
 
-    /// Sends data syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+    /**
+     * Sends data syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+     */
     ptrdiff_t sendToSync(scope const(void)[] buf, Address to) {
         return this.sock.sendTo(buf, to);
     }
 
-    /// Sends data syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+    /**
+     * Sends data syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+     */
     ptrdiff_t sendToSync(scope const(void)[] buf, SocketFlags flags) {
         return this.sock.sendTo(buf, flags);
     }
 
-    /// Sends data syncronously
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+    /**
+     * Sends data syncronously
+     * 
+     * See_Also: $(STDLINK std/socket/socket.sendTo.html, std.socket.Socket.sendTo).
+     */
     ptrdiff_t sendToSync(scope const(void)[] buf) {
         return this.sock.sendTo(buf);
     }
 
-    /// Recieves data asyncronously
-    /// 
-    /// Params:
-    ///  buf = the buffer to read into; recieves at max the length of this in bytes
-    ///  read_timeout = timeout after which the data that was read up until that point should be returned; default: 30 seconds
-    ///  flags = flags for the recieve operation
-    /// 
-    /// Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
+    /**
+     * Recieves data asyncronously
+     * 
+     * Params:
+     *  buf = the buffer to read into; recieves at max the length of this in bytes
+     *  read_timeout = timeout after which the data that was read up until that point should be returned; default: 30 seconds
+     *  flags = flags for the recieve operation
+     * 
+     * Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
+     */
     SocketRecvFuture recieve(scope void[] buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
         return new SocketRecvFuture(this.sock, buf, read_timeout, flags);
     }
@@ -430,9 +454,11 @@ class AsyncSocket {
         return f;
     }
 
-    /// Sets the keep alive time & interval
-    /// 
-    /// See_Also: $(STDLINK std/socket/socket.setKeepAlive.html, std.socket.Socket.setKeepAlive).
+    /**
+     * Sets the keep alive time & interval
+     * 
+     * See_Also: $(STDLINK std/socket/socket.setKeepAlive.html, std.socket.Socket.setKeepAlive).
+     */
     void setKeepAlive(int time, int interval) {
         this.sock.setKeepAlive(time, interval);
     }

@@ -57,10 +57,12 @@ class TimeoutFuture : VoidFuture {
 		private timespec spec;
 	}
 
-	/// Creates the future with the given duration
-	/// 
-	/// sets the deadline by calling $(STDLINK std/datetime/systime/clock.curr_std_time.html, std.datetime.systime.Clock.currStdTime)
-	/// and then adding the given duration to it.
+	/**
+	 * Creates the future with the given duration
+	 * 
+	 * sets the deadline by calling $(STDLINK std/datetime/systime/clock.curr_std_time.html, std.datetime.systime.Clock.currStdTime)
+	 * and then adding the given duration to it.
+	 */
 	this(Duration timeout) {
 		version (linux) {
 			timeout_to_timespec(timeout, this.spec);
