@@ -40,6 +40,13 @@ else {
 static if (!is(typeof(SOCK_CLOEXEC)))
 	enum SOCK_CLOEXEC = 0x80000;
 
+/// Enum to specify for what IO operation to wait for
+enum IoWaitReason {
+	read_write = EPOLLIN | EPOLLOUT,
+	read = EPOLLIN,
+	write = EPOLLOUT,
+}
+
 /// The scheduler, the core of everything
 class Scheduler {
 	/// Queue of all fibers being awaited
@@ -58,12 +65,18 @@ class Scheduler {
 		}
 	}
 
-	/// Adds the current fiber to the list of waiters for IO
-	void addIoWaiter(immutable int fd) {
+	/**
+	 * Adds the current fiber to the list of waiters for IO
+	 * 
+	 * Params:
+	 *     fd = the fd to wait for
+	 *     reason = reason for the wait; prevents wakeup for events not needed
+	 */
+	void addIoWaiter(immutable int fd, IoWaitReason reason = IoWaitReason.read_write) {
 		io_waiters[fd] = Fiber.getThis();
 		version (linux) {
 			epoll_event ev;
-			ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+			ev.events = reason | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
 			ev.data.fd = fd;
 			epoll_ctl(this.epoll_fd, EPOLL_CTL_ADD, fd, &ev);
 		}
