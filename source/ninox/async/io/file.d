@@ -35,6 +35,7 @@ import std.stdio : writeln;
 
 import ninox.async.futures : Future, VoidFuture;
 import ninox.async : gscheduler;
+import ninox.async.scheduler : IoWaitReason;
 
 version (Windows) {
     private alias FSChar = WCHAR;
@@ -99,7 +100,7 @@ class FileReadFuture : Future!(void[]) {
             this.value ~= block;
 
             if (readsize < count) {
-                gscheduler.addIoWaiter(this.fd);
+                gscheduler.addIoWaiter(this.fd, IoWaitReason.read);
                 return false;
             }
         }

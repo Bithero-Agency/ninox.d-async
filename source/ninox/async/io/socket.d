@@ -29,6 +29,7 @@ import std.socket;
 import core.thread : Fiber;
 
 import ninox.async : gscheduler;
+import ninox.async.scheduler : IoWaitReason;
 import ninox.async.futures : ValueFuture, Future, VoidFuture;
 
 version (Posix) {
@@ -48,7 +49,7 @@ class SocketAcceptFuture : ValueFuture!AsyncSocket {
     }
 
     protected override bool isDone() {
-        gscheduler.addIoWaiter(this.sock.handle());
+        gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.read);
 
         // pause this fiber, we only get called again
         // if there is a socket to accept
@@ -102,7 +103,7 @@ class SocketRecvFuture : ValueFuture!size_t {
 
             if (count > readsize && this.remaining > 0) {
                 // buffer has still space, and socket has still data, continue next cycle
-                gscheduler.addIoWaiter(this.sock.handle());
+                gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.read);
                 return false;
             }
             this.value = this.off;
@@ -110,7 +111,7 @@ class SocketRecvFuture : ValueFuture!size_t {
         }
 
         if (this.remaining > 0) {
-            gscheduler.addIoWaiter(this.sock.handle());
+            gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.read);
             return false;
         }
         this.value = 0; // TODO: ???
@@ -150,7 +151,7 @@ class SocketSendFuture : VoidFuture {
         }
 
         if (this.remaining > 0) {
-            gscheduler.addIoWaiter(this.sock.handle());
+            gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.write);
             return false;
         }
         return true;
