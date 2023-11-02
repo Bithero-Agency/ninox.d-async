@@ -29,9 +29,13 @@ import core.thread : Fiber;
 import std.container : DList;
 import core.stdc.errno;
 import std.format;
+import std.datetime : Clock;
+import core.time : Duration, dur;
+
+import ninox.std.optional : Optional;
 
 version (linux) {
-	import core.sys.linux.epoll, core.sys.posix.sys.socket;
+	import core.sys.linux.epoll, core.sys.posix.sys.socket, core.sys.linux.timerfd;
 }
 else {
 	static assert(false, "Module " ~ .stringof ~ " dosnt support this OS.");
@@ -47,10 +51,25 @@ enum IoWaitReason {
 	write = EPOLLOUT,
 }
 
+/// Enum to specify why a Fiber was resumed
+enum ResumeReason {
+	normal,
+	io_ready,
+	io_timeout,
+}
+
+static Duration TIMEOUT_INFINITY = dur!"hnsecs"(-1);
+
 /// The scheduler, the core of everything
 class Scheduler {
+
+	private struct Task {
+		Fiber fiber;
+		ResumeReason reason;
+	}
+
 	/// Queue of all fibers being awaited
-	private DList!Fiber queue;
+	private DList!Task queue;
 
 	/// Queue of all fibers waiting for io;
 	private Fiber[immutable(int)] io_waiters;
@@ -59,10 +78,21 @@ class Scheduler {
 		private int epoll_fd;
 	}
 
+	private ResumeReason _resume_reason;
+
 	this() {
 		version(linux) {
 			this.epoll_fd = epoll_create1(SOCK_CLOEXEC);
 		}
+	}
+
+	/**
+	 * Retrieves the current resume reason
+	 * 
+	 * Returns: the reason why the a Fiber was resumed
+	 */
+	@property ResumeReason resume_reason() {
+		return this._resume_reason;
 	}
 
 	/**
@@ -73,12 +103,53 @@ class Scheduler {
 	 *     reason = reason for the wait; prevents wakeup for events not needed
 	 */
 	void addIoWaiter(immutable int fd, IoWaitReason reason = IoWaitReason.read_write) {
+		this.addIoWaiter(fd, reason, 0);
+	}
+
+	private void addIoWaiter(immutable int fd, IoWaitReason reason, int extra) {
 		io_waiters[fd] = Fiber.getThis();
 		version (linux) {
 			epoll_event ev;
 			ev.events = reason | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
-			ev.data.fd = fd;
+			ev.data.u64 = ((cast (long) extra) << 32) | fd;
 			epoll_ctl(this.epoll_fd, EPOLL_CTL_ADD, fd, &ev);
+		}
+	}
+
+	/**
+	 * Adds the current fiber to the list of waiters for IO
+	 * 
+	 * Params:
+	 *     fd = the fd to wait for
+	 *     timeout = timeout for the IO operation before resuming fiber
+	 *     reason = reason for the wait; prevents wakeup for events not needed
+	 */
+	void addIoWaiter(immutable int fd, Duration timeout, IoWaitReason reason = IoWaitReason.read_write) {
+		this.addIoWaiter(fd, reason);
+
+		if (timeout.total!"hnsecs" < 0) {
+			return;
+		}
+
+		version (linux) {
+			timespec spec;
+			import ninox.async.timeout : timeout_to_timespec;
+			timeout_to_timespec(timeout, spec);
+			this.addTimeoutWaiter(spec, fd);
+		}
+	}
+
+	version (linux) {
+		void addTimeoutWaiter(ref timespec spec) {
+			this.addTimeoutWaiter(spec, 0);
+		}
+
+		private void addTimeoutWaiter(ref timespec spec, int extra) {
+			int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+			itimerspec timer_spec;
+			timer_spec.it_value = spec;
+			timerfd_settime(fd, TFD_TIMER_ABSTIME, &timer_spec, null);
+			this.addIoWaiter(fd, IoWaitReason.read, extra);
 		}
 	}
 
@@ -89,7 +160,11 @@ class Scheduler {
 	/// Params:
 	///     f = the fiber to be scheduled at a later point in time
 	void schedule(Fiber f) {
-		this.queue.insertBack(f);
+		this.schedule(f, ResumeReason.normal);
+	}
+
+	private void schedule(Fiber f, ResumeReason reason) {
+		this.queue.insertBack(Task(f, reason));
 	}
 
 	/// Schedules a function.
@@ -137,11 +212,13 @@ class Scheduler {
 		// As long as our queue is not empty, we take the front most fiber and call it
 		// Thanks to the spin-lock like code in Future.await(), if the work isnt done, we reschedule.
 		while (this.active()) {
-			if (!queue.empty()) {
-				Fiber t = queue.front();
-				queue.removeFront(1);
-				if (t.state() != Fiber.State.TERM)
-					t.call();
+			if (!this.queue.empty()) {
+				Task t = this.queue.front();
+				this.queue.removeFront(1);
+				if (t.fiber.state() != Fiber.State.TERM) {
+					this._resume_reason = t.reason;
+					t.fiber.call();
+				}
 			}
 
 			pollEvents();
@@ -154,7 +231,8 @@ class Scheduler {
 	/// 
 	/// Params:
 	///     fd = the filedescriptor to identifiy the fiber by
-	private void enqueueIoWaiter(int fd) {
+	///     reason = the reason why the IoWaiter was enqueued
+	private void enqueueIoWaiter(int fd, ResumeReason reason) {
 		if (io_waiters[fd] is null) {
 			throw new Exception(format("Cannot enqueue io waiter for fd=%d; no such waiter exists...", fd));
 		}
@@ -166,7 +244,7 @@ class Scheduler {
 			ev.data.fd = fd;
 			epoll_ctl(this.epoll_fd, EPOLL_CTL_DEL, fd, &ev);
 		}
-		this.schedule(f);
+		this.schedule(f, reason);
 	}
 
 	/// Gets the size of the queue
@@ -204,27 +282,36 @@ class Scheduler {
 			foreach (i; 0 .. n) {
 				auto e = events[i];
 				auto flags = e.events;
+
+				int fd = cast(int) (e.data.u64 & 0xffffffff);
+				int extra = cast(int) (e.data.u64 >> 32);
+
 				if (flags & EPOLLIN) {
 					// ready to read
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLIN for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLIN for fd=", fd, " extra=", extra);
 					}
-					this.enqueueIoWaiter(e.data.fd);
+					this.enqueueIoWaiter(fd, extra != 0 ? ResumeReason.io_timeout : ResumeReason.io_ready);
+					if (extra != 0) {
+						// if extra is non-zero; we have an timeout timerfd in fd, and extra the io-fd assosicated
+						// with it. delete io-waiter here so we dont trigger the fiber in the future
+						this.io_waiters[fd] = null;
+					}
 				}
 				else if (flags & EPOLLOUT) {
 					// ready to write
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLOUT for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLOUT for fd=", fd, " extra=", extra);
 					}
-					this.enqueueIoWaiter(e.data.fd);
+					this.enqueueIoWaiter(fd, ResumeReason.io_ready);
 				}
 
 				if (flags & EPOLLERR) {
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", fd, " extra=", extra);
 					}
 
 					// TODO: some error here...
@@ -232,7 +319,7 @@ class Scheduler {
 				if (flags & EPOLLHUP) {
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", e.data.fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", fd, " extra=", extra);
 					}
 
 					// TODO: hangup...

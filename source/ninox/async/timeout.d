@@ -25,8 +25,26 @@
 
 module ninox.async.timeout;
 
-import core.time : Duration;
+import core.time : Duration, dur, convert;
 import ninox.async.futures : VoidFuture;
+import ninox.async : gscheduler;
+import core.thread : Fiber;
+
+version (linux) {
+	import core.sys.linux.timerfd;
+}
+else {
+	static assert(false, "Module " ~ .stringof ~ " dosnt support this OS.");
+}
+
+version (linux) {
+	package (ninox.async) void timeout_to_timespec(ref Duration timeout, ref timespec spec) {
+		clock_gettime(CLOCK_MONOTONIC, &spec);
+		long sec = timeout.total!"seconds";
+		spec.tv_sec += sec;
+		spec.tv_nsec += timeout.total!"nsecs" - convert!("seconds", "nsecs")(sec);
+	}
+}
 
 /**
  * A future for a timeout. Use $(LREF timeout) to create it.
@@ -34,22 +52,28 @@ import ninox.async.futures : VoidFuture;
  * See_Also: $(LREF timeout) to create a instance of this future
  */
 class TimeoutFuture : VoidFuture {
-	/// Stores the deadline in hnsecs, after which the future resolves.
-	private long deadline;
+
+	version (linux) {
+		private timespec spec;
+	}
 
 	/// Creates the future with the given duration
 	/// 
 	/// sets the deadline by calling $(STDLINK std/datetime/systime/clock.curr_std_time.html, std.datetime.systime.Clock.currStdTime)
 	/// and then adding the given duration to it.
-	this(Duration dur) {
-		import std.datetime.systime : Clock;
-		this.deadline = Clock.currStdTime() + dur.total!"hnsecs";
+	this(Duration timeout) {
+		version (linux) {
+			timeout_to_timespec(timeout, this.spec);
+		}
 	}
 
 	/// Future is done only when the current timestamp is after the deadline
 	protected override bool isDone() {
-		import std.datetime.systime : Clock;
-		return Clock.currStdTime() >= this.deadline;
+		version (linux) {
+			gscheduler.addTimeoutWaiter(this.spec);
+			Fiber.yield();
+			return true;
+		}
 	}
 }
 

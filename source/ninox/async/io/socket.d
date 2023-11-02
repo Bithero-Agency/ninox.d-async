@@ -26,10 +26,11 @@
 module ninox.async.io.socket;
 
 import std.socket;
+import std.datetime : Duration, dur;
 import core.thread : Fiber;
 
 import ninox.async : gscheduler;
-import ninox.async.scheduler : IoWaitReason;
+import ninox.async.scheduler : IoWaitReason, ResumeReason, TIMEOUT_INFINITY;
 import ninox.async.futures : ValueFuture, Future, VoidFuture;
 
 version (Posix) {
@@ -64,6 +65,9 @@ class SocketAcceptFuture : ValueFuture!AsyncSocket {
 static int MAX_SOCK_READBLOCK = 4069;
 static int MAX_SOCK_WRITEBLOCK = 4069;
 
+static Duration DEFAULT_SOCK_DATA_TIMEOUT = dur!"seconds"(30);
+alias SOCK_TIMEOUT_INFINITY = TIMEOUT_INFINITY;
+
 /**
  * Future for accepting data from an socket.
  * Use $(LREF AsyncSocket.recieve) to aqquire an instance of this.
@@ -73,13 +77,15 @@ class SocketRecvFuture : ValueFuture!size_t {
     private const(void[]) buf;
     private size_t off = 0;
     private size_t remaining;
+    private Duration read_timeout;
     private SocketFlags flags;
 
     /// Reads into a predefined buffer
-    this(Socket sock, const(void[]) buf, SocketFlags flags = SocketFlags.NONE) {
+    this(Socket sock, const(void[]) buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
         this.sock = sock;
         this.buf = buf;
         this.remaining = buf.length;
+        this.read_timeout = read_timeout;
         this.flags = flags;
     }
 
@@ -111,7 +117,7 @@ class SocketRecvFuture : ValueFuture!size_t {
         }
 
         if (this.remaining > 0) {
-            gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.read);
+            gscheduler.addIoWaiter(this.sock.handle(), this.read_timeout, IoWaitReason.read);
             return false;
         }
         this.value = 0; // TODO: ???
@@ -124,6 +130,19 @@ class SocketRecvFuture : ValueFuture!size_t {
 
             // Yield the current fiber until the task itself is done
             Fiber.yield();
+
+            // check reason why we resume:
+            final switch (gscheduler.resume_reason) {
+                case ResumeReason.normal:
+                case ResumeReason.io_ready: {
+                    continue;
+                }
+
+                case ResumeReason.io_timeout: {
+                    // read timeout
+                    return this.getValue();
+                }
+            }
         }
         return this.getValue();
     }
@@ -345,11 +364,26 @@ class AsyncSocket {
     /// 
     /// Params:
     ///  buf = the buffer to read into; recieves at max the length of this in bytes
+    ///  read_timeout = timeout after which the data that was read up until that point should be returned; default: 30 seconds
     ///  flags = flags for the recieve operation
     /// 
     /// Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
-    SocketRecvFuture recieve(scope void[] buf, SocketFlags flags = SocketFlags.NONE) {
-        return new SocketRecvFuture(this.sock, buf, flags);
+    SocketRecvFuture recieve(scope void[] buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
+        return new SocketRecvFuture(this.sock, buf, read_timeout, flags);
+    }
+
+    /**
+     * Much like $(D recieve) but without any timeout;
+     * equivalent to calling $(D recieve(buf, SOCK_TIMEOUT_INFINITY, flags)).
+     * 
+     * Params:
+     *  buf = the buffer to read into; recieves at max the length of this in bytes
+     *  flags = flags for the recieve operation
+     * 
+     * Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
+     */
+    SocketRecvFuture recieveNoTimeout(scope void[] buf, SocketFlags flags = SocketFlags.NONE) {
+        return this.recieve(buf, SOCK_TIMEOUT_INFINITY, flags);
     }
 
     /// Sets the keep alive time & interval
