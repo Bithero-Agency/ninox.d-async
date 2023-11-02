@@ -52,6 +52,7 @@ void echoServer() {
 		sock.send(buffer[0 .. n]).await();
 
 		sock.shutdownSync(SocketShutdown.BOTH);
+		sock.closeSync();
 	}
 }
 
