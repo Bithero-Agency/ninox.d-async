@@ -32,10 +32,11 @@ import std.traits : isConvertibleToString, isNarrowString, isSomeString;
 import std.range : isSomeFiniteCharInputRange;
 import std.internal.cstring : tempCString;
 import std.stdio : writeln;
+import core.thread : Fiber;
 
 import ninox.async.futures : Future, VoidFuture;
 import ninox.async : gscheduler;
-import ninox.async.scheduler : IoWaitReason;
+import ninox.async.scheduler : IoWaitReason, ResumeReason;
 
 version (Windows) {
     private alias FSChar = WCHAR;
@@ -48,6 +49,55 @@ else { static assert(false, "Module " ~ .stringof ~ " not implemented for this O
 
 static int MAX_FILE_READBLOCK = 4096;
 static int MAX_FILE_WRITEBLOCK = 4096;
+
+/// Base exception for $(D ninox.async.io.file.FileReadException) and $(D ninox.async.io.file.FileWriteException)
+abstract class FileException : Exception {
+    enum ErrKind { error, hup }
+    enum IoKind { read, write }
+
+    @property ErrKind err_kind() const {
+        return this._err_kind;
+    }
+
+    abstract @property IoKind io_kind() const;
+
+private:
+    ErrKind _err_kind;
+
+    @nogc @safe pure nothrow string getMsg() {
+        final switch (this._err_kind) {
+            case ErrKind.error: { return "Error while trying to read or while waiting"; }
+            case ErrKind.hup: { return "Reading failed because peer hung up"; }
+        }
+    }
+
+    @nogc @safe pure nothrow this(ErrKind err_kind, string file = __FILE__, size_t line = __LINE__) {
+        this._err_kind = err_kind;
+        super(this.getMsg(), file, line, null);
+    }
+}
+
+/// Exception for $(D ninox.async.io.file.FileReadFuture)
+class FileReadException : FileException {
+    override @property FileException.IoKind io_kind() const {
+        return FileException.IoKind.read;
+    }
+
+    @nogc @safe pure nothrow this(ErrKind err_kind, string file = __FILE__, size_t line = __LINE__) {
+        super(err_kind, file, line);
+    }
+}
+
+/// Exception for $(D ninox.async.io.file.FileWriteFuture)
+class FileWriteException : FileException {
+    override @property FileException.IoKind io_kind() const {
+        return FileException.IoKind.write;
+    }
+
+    @nogc @safe pure nothrow this(ErrKind err_kind, string file = __FILE__, size_t line = __LINE__) {
+        super(err_kind, file, line);
+    }
+}
 
 /** 
  * Future for a $(STDREF read, std,file) like api; reads `upTo` bytes from a file, or everything if `upTo` is `size_t.max`.
@@ -109,6 +159,34 @@ class FileReadFuture : Future!(void[]) {
         return true;
     }
 
+    override void[] await() {
+        while (!this.isDone()) {
+            // reschedule already done by isDone() via addIoWaiter
+
+            // Yield the current fiber until the task itself is done
+            Fiber.yield();
+
+            // check reason why we resume:
+            final switch (gscheduler.resume_reason) {
+                case ResumeReason.normal:
+                case ResumeReason.io_ready: {
+                    continue;
+                }
+
+                case ResumeReason.io_timeout: {
+                    return this.getValue();
+                }
+
+                case ResumeReason.io_error: {
+                    throw new FileReadException(FileException.ErrKind.error);
+                }
+                case ResumeReason.io_hup: {
+                    throw new FileReadException(FileException.ErrKind.hup);
+                }
+            }
+        }
+        return this.getValue();
+    }
 }
 
 /** 
@@ -194,6 +272,34 @@ class FileWriteFuture : VoidFuture {
         return this.buffer.length <= 0;
     }
 
+    override void await() {
+        while (!this.isDone()) {
+            // reschedule already done by isDone() via addIoWaiter
+
+            // Yield the current fiber until the task itself is done
+            Fiber.yield();
+
+            // check reason why we resume:
+            final switch (gscheduler.resume_reason) {
+                case ResumeReason.normal:
+                case ResumeReason.io_ready: {
+                    continue;
+                }
+
+                case ResumeReason.io_timeout: {
+                    return;
+                }
+
+                case ResumeReason.io_error: {
+                    throw new FileWriteException(FileException.ErrKind.error);
+                }
+                case ResumeReason.io_hup: {
+                    throw new FileWriteException(FileException.ErrKind.hup);
+                }
+            }
+        }
+        return;
+    }
 }
 
 /** 
