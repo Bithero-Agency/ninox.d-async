@@ -291,6 +291,13 @@ class Scheduler {
 
 			auto n = epoll_wait(this.epoll_fd, events.ptr, events.length, timeout);
 			if (n == -1) {
+				import core.stdc.errno;
+				if (errno == EINTR) {
+					// this happens when for example a breakpoint is set in gdb or similar
+					// we simply ignore it and continue like normal
+					return;
+				}
+
 				// THIS IS BAD
 				throw new Exception(format("Epoll failed us; pls look into manual. errno=%d", errno));
 			}
