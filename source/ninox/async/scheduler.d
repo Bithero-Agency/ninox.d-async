@@ -299,7 +299,9 @@ class Scheduler {
 				}
 
 				// THIS IS BAD
-				throw new Exception(format("Epoll failed us; pls look into manual. errno=%d", errno));
+				import core.stdc.string : strerror;
+				import std.string : fromStringz;
+				throw new Exception(format("Epoll failed us; pls look into manual. errno=%d: %s", errno, fromStringz(strerror(errno))));
 			}
 
 			foreach (i; 0 .. n) {
