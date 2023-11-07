@@ -26,7 +26,7 @@
 module ninox.async.timeout;
 
 import core.time : Duration, dur, convert;
-import ninox.async.futures : VoidFuture;
+import ninox.async.futures : Future;
 import ninox.async : gscheduler;
 import core.thread : Fiber;
 
@@ -51,7 +51,7 @@ version (linux) {
  *
  * See_Also: $(LREF timeout) to create a instance of this future
  */
-class TimeoutFuture : VoidFuture {
+class TimeoutFuture : Future!void {
 
 	version (linux) {
 		private timespec spec;
@@ -69,12 +69,11 @@ class TimeoutFuture : VoidFuture {
 		}
 	}
 
-	/// Future is done only when the current timestamp is after the deadline
-	protected override bool isDone() {
+	public void await() {
 		version (linux) {
 			gscheduler.addTimeoutWaiter(this.spec);
 			Fiber.yield();
-			return true;
+			// fiber should only be resumed once the timeout was reached
 		}
 	}
 }
