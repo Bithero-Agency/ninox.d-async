@@ -184,6 +184,51 @@ class SocketRecvFuture : ValueFuture!size_t {
 }
 
 /**
+ * Future for checking for data / activity on a socket.
+ * Use $(LREF AsyncSocket.waitForActivity) to aqquire an instance of this.
+ */
+class SocketActivityFuture : Future!bool {
+    private Socket sock;
+    private Duration timeout;
+
+    this(Socket sock, Duration timeout = DEFAULT_SOCK_DATA_TIMEOUT) {
+        this.sock = sock;
+        this.timeout = timeout;
+    }
+
+    bool await() {
+        int count = 0;
+        ioctl(this.sock.handle(), FIONREAD, &count);
+        if (count > 0) {
+            // short circuit here when there's still data to be read
+            return true;
+        }
+
+        gscheduler.addIoWaiter(this.sock.handle(), this.timeout, IoWaitReason.read);
+
+        Fiber.yield();
+
+        final switch (gscheduler.resume_reason) {
+            case ResumeReason.normal:
+            case ResumeReason.io_ready: {
+                return true;
+            }
+
+            case ResumeReason.io_timeout: {
+                return false;
+            }
+
+            case ResumeReason.io_error: {
+                throw new Exception("Error in io layer");
+            }
+            case ResumeReason.io_hup: {
+                throw new Exception("Connection hang up");
+            }
+        }
+    }
+}
+
+/**
  * Future for sending data over a socket.
  * Use $(LREF AsyncSocket.send) to aqquire an instance of this.
  */
@@ -465,6 +510,18 @@ class AsyncSocket {
         auto f = new SocketRecvFuture(this.sock, buf, read_timeout, flags);
         f.strict = true;
         return f;
+    }
+
+    /** 
+     * Creates a future that, when awaited, waits for any IO activity of the socket
+     * 
+     * Params:
+     *   timeout = the timeout for waiting got activity
+     * 
+     * Returns: true if activity was detected; false if no activity occured before timeout ran out
+     */
+    Future!bool waitForActivity(Duration timeout = DEFAULT_SOCK_DATA_TIMEOUT) {
+        return new SocketActivityFuture(this.sock, timeout);
     }
 
     /**
