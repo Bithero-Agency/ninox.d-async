@@ -288,7 +288,7 @@ class Scheduler {
 			epoll_event[16] events;
 
 			int timeout = 0;
-			if (this.queue.empty()) {
+			if (this.queue.empty() && io_waiters.length > 0) {
 				// wait infinite on IO when we have no pending tasks in the queue
 				timeout = -1;
 			}
