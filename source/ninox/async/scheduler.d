@@ -78,6 +78,8 @@ class Scheduler {
 
 	version (linux) {
 		private int epoll_fd;
+		private enum TIMERFD_FLAG = 0x80_00_00_00;
+		private enum TIMERFD_MASK = ~TIMERFD_FLAG;
 	}
 
 	private ResumeReason _resume_reason;
@@ -134,6 +136,8 @@ class Scheduler {
 		}
 
 		version (linux) {
+			assert((fd & TIMERFD_FLAG) != 0, "FD for addIoWaiter() is invalid; highest (31) bit is set!");
+
 			timespec spec;
 			import ninox.async.timeout : timeout_to_timespec;
 			timeout_to_timespec(timeout, spec);
@@ -151,7 +155,7 @@ class Scheduler {
 			itimerspec timer_spec;
 			timer_spec.it_value = spec;
 			timerfd_settime(fd, TFD_TIMER_ABSTIME, &timer_spec, null);
-			this.addIoWaiter(fd, IoWaitReason.read, extra);
+			this.addIoWaiter(fd, IoWaitReason.read, extra | TIMERFD_FLAG);
 		}
 	}
 
@@ -310,6 +314,15 @@ class Scheduler {
 
 				int fd = cast(int) (e.data.u64 & 0xffffffff);
 				int extra = cast(int) (e.data.u64 >> 32);
+				bool isTimer = (extra & TIMERFD_FLAG) != 0;
+				extra = extra & TIMERFD_MASK;
+
+				if (isTimer) {
+					// close timerfd
+					import core.sys.posix.unistd : close;
+					close(fd);
+				}
+
 				if (extra != 0) {
 					// if extra is non-zero; we have an timeout timerfd in fd, and extra the io-fd assosicated
 					// with it. delete io-waiter here so we dont trigger the fiber in the future
