@@ -112,7 +112,7 @@ class Scheduler {
 		io_waiters[fd] = Fiber.getThis();
 		version (linux) {
 			epoll_event ev;
-			ev.events = reason | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+			ev.events = reason | EPOLLERR | EPOLLHUP | EPOLLRDHUP; // TODO: add EPOLLET?
 			ev.data.u64 = ((cast (long) extra) << 32) | fd;
 			epoll_ctl(this.epoll_fd, EPOLL_CTL_ADD, fd, &ev);
 		}
