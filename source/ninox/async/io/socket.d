@@ -68,15 +68,15 @@ static int MAX_SOCK_WRITEBLOCK = 4069;
 static Duration DEFAULT_SOCK_DATA_TIMEOUT = dur!"seconds"(30);
 alias SOCK_TIMEOUT_INFINITY = TIMEOUT_INFINITY;
 
-/// Exception for SocketRecvFuture
-class SocketRecvException : Exception {
+/// Base Exception for all Socket things
+class SocketException : Exception {
     enum Kind { error, hup, timeout }
 
     @property Kind kind() const {
         return this._kind;
     }
 
-private:
+protected:
     Kind _kind;
 
     @nogc @safe pure nothrow string getMsg() {
@@ -90,6 +90,13 @@ private:
     @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
         this._kind = kind;
         super(this.getMsg(), file, line, null);
+    }
+}
+
+/// Exception for SocketRecvFuture
+class SocketRecvException : SocketException {
+    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
+        super(kind, file, line);
     }
 }
 
@@ -183,6 +190,13 @@ class SocketRecvFuture : ValueFuture!size_t {
     }
 }
 
+/// Exception for SocketActivityFuture
+class SocketActivityException : SocketException {
+    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
+        super(kind, file, line);
+    }
+}
+
 /**
  * Future for checking for data / activity on a socket.
  * Use $(LREF AsyncSocket.waitForActivity) to aqquire an instance of this.
@@ -219,10 +233,10 @@ class SocketActivityFuture : Future!bool {
             }
 
             case ResumeReason.io_error: {
-                throw new Exception("Error in io layer");
+                throw new SocketActivityException(SocketException.Kind.error);
             }
             case ResumeReason.io_hup: {
-                throw new Exception("Connection hang up");
+                throw new SocketActivityException(SocketException.Kind.hup);
             }
         }
     }
