@@ -241,6 +241,12 @@ class AsyncSocket {
     /// Use an existing socket.
     this(Socket sock) {
         this.sock = sock;
+
+        version (Posix) {
+            // close on exec
+            import core.sys.posix.fcntl;
+            fcntl(this.sock.handle(), F_SETFD, FD_CLOEXEC);
+        }
     }
 
     /// Creates a socket; see $(STDLINK std/socket/socket.this.html, std,socket.Socket.this).
