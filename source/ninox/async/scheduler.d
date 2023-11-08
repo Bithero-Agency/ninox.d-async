@@ -313,7 +313,10 @@ class Scheduler {
 				if (extra != 0) {
 					// if extra is non-zero; we have an timeout timerfd in fd, and extra the io-fd assosicated
 					// with it. delete io-waiter here so we dont trigger the fiber in the future
-					this.io_waiters[fd] = null;
+					this.io_waiters.remove(extra);
+					epoll_event ev;
+					ev.data.u64 = e.data.u64;
+					epoll_ctl(this.epoll_fd, EPOLL_CTL_DEL, extra, &ev);
 				}
 
 				if (flags & EPOLLERR) {
