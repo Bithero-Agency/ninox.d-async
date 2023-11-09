@@ -215,6 +215,10 @@ class SocketActivityFuture : Future!bool {
         ioctl(this.sock.handle(), FIONREAD, &count);
         if (count > 0) {
             // short circuit here when there's still data to be read
+            debug (ninoxasync_socket_activity) {
+                import std.stdio : writeln;
+                writeln("[SocketActivityFuture] still data in wire-buffer");
+            }
             return true;
         }
 
@@ -225,10 +229,21 @@ class SocketActivityFuture : Future!bool {
         final switch (gscheduler.resume_reason) {
             case ResumeReason.normal:
             case ResumeReason.io_ready: {
+                // no need to read the count again; epoll is only woken up with our fd
+                // when there's actual data in the stream; so sending data packets with a
+                // length of 0 dosn't acctidentially triggers us!
+                debug (ninoxasync_socket_activity) {
+                    import std.stdio : writeln;
+                    writeln("[SocketActivityFuture] data on wire!");
+                }
                 return true;
             }
 
             case ResumeReason.io_timeout: {
+                debug (ninoxasync_socket_activity) {
+                    import std.stdio : writeln;
+                    writeln("[SocketActivityFuture] timeout reached");
+                }
                 return false;
             }
 
