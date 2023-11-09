@@ -249,11 +249,13 @@ class Scheduler {
 	 *     reason = the reason why the IoWaiter was enqueued
 	 */
 	private void enqueueIoWaiter(int fd, ResumeReason reason) {
-		if (io_waiters[fd] is null) {
+		auto ptr = fd in io_waiters;
+
+		if (ptr is null || *ptr is null) {
 			throw new Exception(format("Cannot enqueue io waiter for fd=%d; no such waiter exists...", fd));
 		}
 
-		Fiber f = io_waiters[fd];
+		Fiber f = *ptr;
 		io_waiters.remove(fd);
 		version (linux) {
 			epoll_event ev;
