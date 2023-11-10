@@ -152,6 +152,12 @@ class Scheduler {
 
 		private void addTimeoutWaiter(ref timespec spec, int extra) {
 			int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+			if (fd < 0) {
+				import core.stdc.string : strerror;
+				import std.string : fromStringz;
+				throw new Exception(format("Failed to create timerfd; errno=%d: %s", errno, fromStringz(strerror(errno))));
+			}
+
 			itimerspec timer_spec;
 			timer_spec.it_value = spec;
 			timerfd_settime(fd, TFD_TIMER_ABSTIME, &timer_spec, null);
