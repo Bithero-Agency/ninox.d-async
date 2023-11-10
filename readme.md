@@ -1,5 +1,7 @@
 # ninox.d-async
 
+[![DUB Version](https://img.shields.io/dub/v/ninox-d_async)](https://code.dlang.org/packages/ninox-d_async)
+
 A small asyncronous framework for everyone.
 
 ## License
