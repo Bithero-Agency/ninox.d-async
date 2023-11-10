@@ -251,7 +251,12 @@ class SocketActivityFuture : Future!bool {
                 throw new SocketActivityException(SocketException.Kind.error);
             }
             case ResumeReason.io_hup: {
-                throw new SocketActivityException(SocketException.Kind.hup);
+                // socket hang up; treat it as no activity available / timeout
+                debug (ninoxasync_socket_activity) {
+                    import std.stdio : writeln;
+                    writeln("[SocketActivityFuture] socket hung up");
+                }
+                return false;
             }
         }
     }
