@@ -403,10 +403,10 @@ class Scheduler {
 					}
 					this.enqueueIoWaiter(fd, ResumeReason.io_error);
 				}
-				else if (flags & EPOLLHUP) {
+				else if (flags & EPOLLHUP || flags & EPOLLRDHUP) {
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP for fd=", fd);
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP/EPOLLRDHUP for fd=", fd);
 					}
 					this.enqueueIoWaiter(fd, ResumeReason.io_hup);
 				}
