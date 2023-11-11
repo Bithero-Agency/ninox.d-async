@@ -396,19 +396,19 @@ class Scheduler {
 				bool isTimeout = data.isFd1Timer;
 				int fd = data.fd1;
 
-				if (flags & EPOLLERR) {
-					debug (ninoxasync_scheduler_pollEvents) {
-						import std.stdio : writeln;
-						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=");
-					}
-					this.enqueueIoWaiter(fd, ResumeReason.io_error);
-				}
-				else if (flags & EPOLLHUP || flags & EPOLLRDHUP) {
+				if (flags & EPOLLHUP || flags & EPOLLRDHUP) {
 					debug (ninoxasync_scheduler_pollEvents) {
 						import std.stdio : writeln;
 						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP/EPOLLRDHUP for fd=", fd);
 					}
 					this.enqueueIoWaiter(fd, ResumeReason.io_hup);
+				}
+				else if (flags & EPOLLERR) {
+					debug (ninoxasync_scheduler_pollEvents) {
+						import std.stdio : writeln;
+						writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", fd);
+					}
+					this.enqueueIoWaiter(fd, ResumeReason.io_error);
 				}
 				else if (flags & EPOLLIN) {
 					// ready to read
