@@ -226,7 +226,7 @@ class Scheduler {
 	 * Params:
 	 *     f = the fiber to be scheduled at a later point in time
 	 */
-	void schedule(Fiber f) {
+	package(ninox.async) void schedule(Fiber f) {
 		this.schedule(f, ResumeReason.normal);
 	}
 
