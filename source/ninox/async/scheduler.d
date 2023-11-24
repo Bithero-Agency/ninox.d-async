@@ -62,6 +62,18 @@ enum ResumeReason {
 
 static Duration TIMEOUT_INFINITY = dur!"hnsecs"(-1);
 
+static DList!Fiber recycleList;
+
+private Fiber recycleFiber() {
+	if (recycleList.empty) {
+		return null;
+	} else {
+		auto f = recycleList.front();
+		recycleList.removeFront();
+		return f;
+	}
+}
+
 /// The scheduler, the core of everything
 class Scheduler {
 
@@ -250,7 +262,10 @@ class Scheduler {
 		assert(fn);
 	}
 	do {
-		this.schedule(new Fiber(fn));
+		auto f = recycleFiber();
+		if (f is null) { f = new Fiber(fn); }
+		else { f.reset(fn); }
+		this.schedule(f, ResumeReason.normal);
 	}
 
 	/**
@@ -269,7 +284,10 @@ class Scheduler {
 		assert(dg);
 	}
 	do {
-		this.schedule(new Fiber(dg));
+		auto f = recycleFiber();
+		if (f is null) { f = new Fiber(dg); }
+		else { f.reset(dg); }
+		this.schedule(f, ResumeReason.normal);
 	}
 
 	private bool active() {
@@ -291,6 +309,12 @@ class Scheduler {
 				if (t.fiber.state() != Fiber.State.TERM) {
 					this._resume_reason = t.reason;
 					t.fiber.call();
+				}
+
+				if (t.fiber.state() == Fiber.State.TERM) {
+					// terminated means we can perfectly fine recycle it,
+					// since all fibers are always created by us anyway.
+					recycleList.insertBack(t.fiber);
 				}
 			}
 
