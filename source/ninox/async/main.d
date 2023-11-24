@@ -54,6 +54,10 @@ template AsyncLoop(string func) {
     int mainAsyncLoop(string[] args) {
         g_async_args = args;
         gscheduler.schedule(&asyncMainWrapper);
+
+        import ninox.async.signals;
+        setupSignals();
+
         gscheduler.loop();
         return g_async_exitcode;
     }
