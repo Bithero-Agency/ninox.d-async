@@ -59,9 +59,12 @@ void echoServer() {
 
 int doTimeout(int secs) {
 	import core.time;
+	import std.datetime.stopwatch : StopWatch, AutoStart;
 	writeln("Start doTimeout for ", secs, " seconds");
+	auto sw = StopWatch(AutoStart.yes);
 	timeout(seconds(secs)).await();
-	writeln("End doTimeout for ", secs, " seconds");
+	sw.stop();
+	writeln("End doTimeout for ", secs, " seconds (stopwatch: ", sw.peek().total!"msecs", "ms)");
 	return secs * 2;
 }
 long doTimeout2(int secs) {
