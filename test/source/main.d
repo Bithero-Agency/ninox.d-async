@@ -39,6 +39,7 @@ void readFile() {
 void echoServer() {
 	import ninox.async.io.socket;
 	import std.socket;
+	import std.datetime : dur;
 	auto l = new AsyncSocket(AddressFamily.INET, SocketType.STREAM);
 	l.bind(new InternetAddress("localhost", 8080));
 	l.listen();
@@ -47,7 +48,7 @@ void echoServer() {
 		writeln("accepted sock: ", sock.remoteAddress);
 
 		char[5] buffer;
-		auto n = sock.recieve(buffer).await();
+		auto n = sock.recieveStrictTimeout(buffer, dur!"seconds"(3)).await();
 		writeln("got ", n, " bytes of data: ", cast(uint8_t[]) buffer[0 .. n]);
 		sock.send(buffer[0 .. n]).await();
 
