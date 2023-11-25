@@ -372,6 +372,15 @@ class Scheduler {
 		return size;
 	}
 
+	/** 
+	 * Gets the count of io waiters
+	 * 
+	 * Returns: the count of io waiters
+	 */
+	public ulong ioWaiterCount() {
+		return this.io_waiters.length;
+	}
+
 	/**
 	 * Handles all io-events
 	 *
