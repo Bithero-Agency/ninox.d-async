@@ -81,9 +81,9 @@ protected:
 
     @nogc @safe pure nothrow string getMsg() {
         final switch (this._kind) {
-            case Kind.error: { return "Error while trying to read or while waiting"; }
-            case Kind.hup: { return "Reading failed because peer hung up"; }
-            case Kind.timeout: { return "Read timeout reached without any data recieved"; }
+            case Kind.error: { return "Error while trying do IO or while waiting"; }
+            case Kind.hup: { return "IO failed because peer hung up"; }
+            case Kind.timeout: { return "IO timeout reached without any data recieved"; }
         }
     }
 
@@ -262,6 +262,13 @@ class SocketActivityFuture : Future!bool {
     }
 }
 
+/// Exception for SocketSendFuture
+class SocketSendException : SocketException {
+    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
+        super(kind, file, line);
+    }
+}
+
 /**
  * Future for sending data over a socket.
  * Use $(LREF AsyncSocket.send) to aqquire an instance of this.
@@ -306,6 +313,28 @@ class SocketSendFuture : VoidFuture {
 
             // Yield the current fiber until the task itself is done
             Fiber.yield();
+
+            // check reason why we resume:
+            final switch (gscheduler.resume_reason) {
+                case ResumeReason.normal:
+                case ResumeReason.io_ready: {
+                    continue;
+                }
+
+                case ResumeReason.io_timeout: {
+                    // if (this.strict) {
+                    throw new SocketSendException(SocketSendException.Kind.timeout);
+                    // }
+                    // return;
+                }
+
+                case ResumeReason.io_error: {
+                    throw new SocketSendException(SocketSendException.Kind.error);
+                }
+                case ResumeReason.io_hup: {
+                    throw new SocketSendException(SocketSendException.Kind.hup);
+                }
+            }
         }
         return this.getValue();
     }
