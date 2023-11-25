@@ -34,6 +34,13 @@ else {
 
 private extern(C) void handleBrokenPipe(int signal) nothrow {}
 
+private extern(C) void handleShutdown(int signal) nothrow {
+	import ninox.async;
+	try {
+		gscheduler.shutdown();
+	} catch (Throwable th) {}
+}
+
 void setupSignals() {
 	version (Posix) {
 		sigset_t sigset;
@@ -44,5 +51,9 @@ void setupSignals() {
 		siginfo.sa_mask = sigset;
 		siginfo.sa_flags = SA_RESTART;
 		sigaction(SIGPIPE, &siginfo, null);
+
+		siginfo.sa_handler = &handleShutdown;
+		sigaction(SIGINT, &siginfo, null);
+		sigaction(SIGTERM, &siginfo, null);
 	}
 }

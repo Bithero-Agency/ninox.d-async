@@ -88,6 +88,9 @@ class Scheduler {
 	/// Queue of all fibers waiting for io;
 	private Fiber[immutable(int)] io_waiters;
 
+	/// Flag if the scheduler should shutdown
+	private bool is_shutdown = false;
+
 	version (linux) {
 		private int epoll_fd;
 		private enum TIMERFD_FLAG = 0x80_00_00_00;
@@ -318,8 +321,16 @@ class Scheduler {
 				}
 			}
 
+			if (this.is_shutdown) {
+				break;
+			}
+
 			pollEvents();
 		}
+	}
+
+	package(ninox.async) void shutdown() {
+		this.is_shutdown = true;
 	}
 
 	/**
