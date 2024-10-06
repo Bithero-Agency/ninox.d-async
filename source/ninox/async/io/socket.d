@@ -355,6 +355,8 @@ class AsyncSocket {
             import core.sys.posix.fcntl;
             fcntl(this.sock.handle(), F_SETFD, FD_CLOEXEC);
         }
+
+        this.sock.blocking = false;
     }
 
     /// Creates a socket; see $(STDLINK std/socket/socket.this.html, std,socket.Socket.this).
