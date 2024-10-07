@@ -388,7 +388,7 @@ class Scheduler {
 	 */
 	private void pollEvents() {
 		version (linux) {
-			epoll_event[16] events;
+			epoll_event[64] events;
 
 			int timeout = 0;
 			if (this.queue.empty() && io_waiters.length > 0) {
