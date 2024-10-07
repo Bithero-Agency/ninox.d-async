@@ -62,8 +62,8 @@ class SocketAcceptFuture : ValueFuture!AsyncSocket {
     }
 }
 
-static int MAX_SOCK_READBLOCK = 4069;
-static int MAX_SOCK_WRITEBLOCK = 4069;
+static int MAX_SOCK_READBLOCK = 1024 * 32;
+static int MAX_SOCK_WRITEBLOCK = 1024 * 32;
 
 static Duration DEFAULT_SOCK_DATA_TIMEOUT = dur!"seconds"(30);
 alias SOCK_TIMEOUT_INFINITY = TIMEOUT_INFINITY;
