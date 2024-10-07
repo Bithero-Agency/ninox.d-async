@@ -74,6 +74,14 @@ private Fiber recycleFiber() {
 	}
 }
 
+static if ((void*).sizeof >= 8) {
+	// Use an 16Mb stack on 64bit systems.
+	enum defaultTaskStackSize = 16*1024*1024;
+} else {
+	// Use an 512Kb stack on 32bit systems.
+	enum defaultTaskStackSite = 512*1024;
+}
+
 /// The scheduler, the core of everything
 class Scheduler {
 
@@ -266,7 +274,7 @@ class Scheduler {
 	}
 	do {
 		auto f = recycleFiber();
-		if (f is null) { f = new Fiber(fn); }
+		if (f is null) { f = new Fiber(fn, defaultTaskStackSize); }
 		else { f.reset(fn); }
 		this.schedule(f, ResumeReason.normal);
 	}
@@ -288,7 +296,7 @@ class Scheduler {
 	}
 	do {
 		auto f = recycleFiber();
-		if (f is null) { f = new Fiber(dg); }
+		if (f is null) { f = new Fiber(dg, defaultTaskStackSize); }
 		else { f.reset(dg); }
 		this.schedule(f, ResumeReason.normal);
 	}
