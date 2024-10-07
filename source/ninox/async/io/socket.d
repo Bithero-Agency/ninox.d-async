@@ -597,4 +597,41 @@ class AsyncSocket {
     void setKeepAlive(int time, int interval) {
         this.sock.setKeepAlive(time, interval);
     }
+
+    /** 
+     * Set a socket option.
+     * 
+     * See_Also: $(STDLINK std/socket/socket.setOption.html, std.socket.Socket.setOption).
+     */
+    pragma(inline) void setOption(SocketOptionLevel level, SocketOption option, scope void[] value) @trusted {
+        this.sock.setOption(level, option, value);
+    }
+
+    /** 
+     * Common case for setting integer and boolean options.
+     * 
+     * See_Also: $(STDLINK std/socket/socket.setOption.html, std.socket.Socket.setOption).
+     */
+    pragma(inline) void setOption(SocketOptionLevel level, SocketOption option, int32_t value) @trusted {
+        this.sock.setOption(level, option, (&value)[0 .. 1]);
+    }
+
+    /** 
+     * Set the linger option.
+     * 
+     * See_Also: $(STDLINK std/socket/socket.setOption.html, std.socket.Socket.setOption).
+     */
+    pragma(inline) void setOption(SocketOptionLevel level, SocketOption option, Linger value) @trusted {
+        this.sock.setOption(level, option, (&value.clinger)[0 .. 1]);
+    }
+
+    /**
+     * Sets a timeout (duration) option, i.e. `SocketOption.SNDTIMEO` or
+     * `RCVTIMEO`. Zero indicates no timeout.
+     * 
+     * See_Also: $(STDLINK std/socket/socket.setOption.html, std.socket.Socket.setOption).
+     */
+    pragma(inline) void setOption(SocketOptionLevel level, SocketOption option, Duration value) @trusted {
+        this.sock.setOption(level, option, value);
+    }
 }
