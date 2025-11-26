@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Mai-Lapyst
+ * Copyright (C) 2023-2025 Mai-Lapyst
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,7 +19,7 @@
  * This module provides asyncronous access to socket IO.
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
- * Copyright: Copyright (C) 2023 Mai-Lapyst
+ * Copyright: Copyright (C) 2023-2025 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
@@ -31,7 +31,7 @@ import core.thread : Fiber;
 
 import ninox.async : gscheduler;
 import ninox.async.scheduler : IoWaitReason, ResumeReason, TIMEOUT_INFINITY;
-import ninox.async.futures : ValueFuture, Future, VoidFuture;
+import ninox.async.futures : ValueFuture, Future, VoidFuture, yieldAsync;
 
 version (Posix) {
     import core.sys.posix.sys.socket, core.sys.posix.sys.ioctl;
@@ -142,7 +142,7 @@ class SocketRecvFuture : ValueFuture!size_t {
 
             if (count > readsize && this.remaining > 0) {
                 // buffer has still space, and socket has still data, continue next cycle
-                gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.read);
+                yieldAsync();
                 return false;
             }
             this.value = this.off;
