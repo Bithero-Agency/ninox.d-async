@@ -79,7 +79,7 @@ static if ((void*).sizeof >= 8) {
 	enum defaultTaskStackSize = 16*1024*1024;
 } else {
 	// Use an 512Kb stack on 32bit systems.
-	enum defaultTaskStackSite = 512*1024;
+	enum defaultTaskStackSize = 512*1024;
 }
 
 /// The scheduler, the core of everything
