@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Mai-Lapyst
+ * Copyright (C) 2023-2025 Mai-Lapyst
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,7 +19,7 @@
  * The main component: the scheduler!
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
- * Copyright: Copyright (C) 2023 Mai-Lapyst
+ * Copyright: Copyright (C) 2023-2025 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
@@ -182,7 +182,7 @@ class Scheduler {
 	 *     fd = the fd to wait for
 	 *     reason = reason for the wait; prevents wakeup for events not needed
 	 */
-	void addIoWaiter(immutable int fd, IoWaitReason reason = IoWaitReason.read_write) {
+	pragma(inline) void addIoWaiter(immutable int fd, IoWaitReason reason = IoWaitReason.read_write) {
 		this.addIoWaiter(fd, reason, epoll_data(false, fd));
 	}
 
@@ -301,7 +301,7 @@ class Scheduler {
 		this.schedule(f, ResumeReason.normal);
 	}
 
-	private bool active() {
+	pragma(inline) private bool active() {
 		return !queue.empty() || io_waiters.length > 0;
 	}
 
