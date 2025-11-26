@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Mai-Lapyst
+ * Copyright (C) 2023-2025 Mai-Lapyst
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,7 +19,7 @@
  * Module to hold all base future types.
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
- * Copyright: Copyright (C) 2023 Mai-Lapyst
+ * Copyright: Copyright (C) 2023-2025 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
@@ -546,4 +546,14 @@ FnFuture!(DList!R) captureAll(R, T...)(T args)
 		}
 		return Optional!(DList!R).some(res);
 	});
+}
+
+/** 
+ * Yields the current fiber and ensures that it is re-enqueued to be continued later.
+ * 
+ * This can be used to create an mandatory point for giving back control to the scheduler so other tasks can run.
+ */
+void yieldAsync() {
+	gscheduler.schedule(Fiber.getThis());
+	Fiber.yield();
 }
