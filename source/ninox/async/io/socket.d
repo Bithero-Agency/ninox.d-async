@@ -634,4 +634,17 @@ class AsyncSocket {
     pragma(inline) void setOption(SocketOptionLevel level, SocketOption option, Duration value) @trusted {
         this.sock.setOption(level, option, value);
     }
+
+    pragma(inline) @property void blocking(bool val) {
+        this.sock.blocking = val;
+    }
+
+    pragma(inline) @property void tcpnodelay(bool val) {
+        this.setOption(SocketOptionLevel.TCP, SocketOption.TCP_NODELAY, val);
+    }
+
+    pragma(inline) @property void reuseaddr(bool val) {
+        this.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, val);
+    }
+
 }
