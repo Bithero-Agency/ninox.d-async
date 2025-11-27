@@ -3,7 +3,7 @@
 	"authors": [
 		"Mai-Lapyst"
 	],
-	"copyright": "Copyright © 2023, Mai-Lapyst",
+	"copyright": "Copyright © 2023-2025, Mai-Lapyst",
 	"description": "A minimal asyncronous framework.",
 	"license": "AGPL-3.0-or-later",
 	"homepage": "https://codeark.it/bithero-dlang/ninox.d-async",
