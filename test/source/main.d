@@ -93,13 +93,54 @@ void testAsyncFn() {
 	foreach(r; res) { writeln(" - ", r); }
 }
 
+import std.datetime : dur, Duration;
+
+class SpinnyTimeout : VoidFuture {
+	private long deadline;
+	this(Duration dur) {
+		import std.datetime.systime : Clock;
+		this.deadline = Clock.currStdTime() + dur.total!"hnsecs";
+	}
+	protected override bool isDone() {
+		import std.datetime.systime : Clock;
+		return Clock.currStdTime() >= this.deadline;
+	}
+}
+
 /// Main
 void main()
 {
-	gscheduler.schedule(new Fiber(&doWork));
+	//gscheduler.schedule(new Fiber(&doWork));
 	//gscheduler.schedule(new Fiber(&otherWork));
 	//gscheduler.schedule(new Fiber(&readFile));
 	//gscheduler.schedule(&testAsyncFn);
 	//gscheduler.schedule(&echoServer);
+
+	import std.stdio;
+
+	for (int i = 0; i < 20; i++) {
+		gscheduler.schedule(() {
+			writeln("task ", i, " starting...");
+			timeout(dur!"seconds"(1)).await();
+			//(new SpinnyTimeout(dur!"seconds"(5))).await();
+			writeln("task ", i, " ending...");
+		});
+	}
+
+	// import ninox.async.workers;
+	// gscheduler.schedule(() {
+	// 	while (true) {
+	// 		WorkerPool.instance.printStats();
+	// 		timeout(dur!"seconds"(1)).await();
+	// 	}
+	// });
+	// WorkerPool.instance.startPool(2);
+
+	// gscheduler.schedule(() {
+	// 	while (true) {
+	// 		timeout(dur!"seconds"(1)).await();
+	// 	}
+	// });
+
 	gscheduler.loop();
 }
