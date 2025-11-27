@@ -210,7 +210,10 @@ class Scheduler {
 		}
 
 		version (linux) {
-			assert((fd & TIMERFD_FLAG) == 0, "FD for addIoWaiter() is invalid; highest (31) bit is set!");
+			if ((fd & TIMERFD_FLAG) != 0) {
+				import std.conv : to;
+				assert(false, "FD " ~ fd.to!string ~ " for addIoWaiter() is invalid; highest (31) bit is set!");
+			}
 
 			timespec spec;
 			import ninox.async.timeout : timeout_to_timespec;
