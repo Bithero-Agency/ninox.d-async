@@ -43,3 +43,4 @@ Your `main`-function also should call `gscheduler.loop();` before it's end to ac
 - add more library features such as arbitary streams
 - add async variant of `awaitAllSync`
 - improve `awaitAll*` and `captureAll` to be paralell instead of linear
+- move from using `std.socket` in `AsyncSocket` to using `socket_t` directly
