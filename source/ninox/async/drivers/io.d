@@ -1,0 +1,312 @@
+/*
+ * Copyright (C) 2025 Mai-Lapyst
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/** 
+ * Provides the IO driver.
+ * 
+ * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
+ * Copyright: Copyright (C) 2025 Mai-Lapyst
+ * Authors:   $(HTTP codearq.net/Mai-Lapyst, Mai-Lapyst)
+ */
+
+module ninox.async.drivers.io;
+
+import core.stdc.errno;
+import core.thread : Fiber;
+import core.time : Duration, dur;
+
+import std.format : format;
+
+import ninox.async.scheduler : ResumeReason;
+import ninox.async : gscheduler;
+
+version (linux) {
+    import core.sys.linux.epoll, core.sys.posix.sys.socket, core.sys.linux.timerfd;
+}
+else {
+    static assert(false, "Module " ~ .stringof ~ " dosnt support this OS.");
+}
+
+static if (!is(typeof(SOCK_CLOEXEC)))
+    enum SOCK_CLOEXEC = 0x80000;
+
+/// Enum to specify for what IO operation to wait for
+enum IoWaitReason {
+    read_write = EPOLLIN | EPOLLOUT,
+    read = EPOLLIN,
+    write = EPOLLOUT,
+}
+
+/// Driver for IO operations
+class IoDriver {
+
+    private int epoll_fd;
+    private enum TIMERFD_FLAG = 0x80_00_00_00;
+    private enum TIMERFD_MASK = ~TIMERFD_FLAG;
+
+    private struct epoll_data {
+        bool isFd1Timer = false;
+        int fd1;
+
+        bool isFd2Timer = false;
+        int fd2;
+
+        this(bool isFd1Timer, int fd1) {
+            assert((fd1 & TIMERFD_FLAG) == 0, "Cannot create epoll_data: fd1 has TIMERFD_FLAG already set!");
+            this.isFd1Timer = isFd1Timer;
+            this.fd1 = fd1;
+            this.isFd2Timer = false;
+            this.fd2 = 0;
+        }
+
+        this(bool isFd1Timer, int fd1, bool isFd2Timer, int fd2) {
+            assert((fd1 & TIMERFD_FLAG) == 0, "Cannot create epoll_data: fd1 has TIMERFD_FLAG already set!");
+            assert((fd2 & TIMERFD_FLAG) == 0, "Cannot create epoll_data: fd2 has TIMERFD_FLAG already set!");
+            this.isFd1Timer = isFd1Timer;
+            this.fd1 = fd1;
+            this.isFd2Timer = isFd2Timer;
+            this.fd2 = fd2;
+        }
+
+        ulong toData() {
+            ulong p1 = this.fd1;
+            if (this.isFd1Timer) { p1 |= TIMERFD_FLAG; }
+
+            ulong p2 = this.fd2;
+            if (this.isFd2Timer) { p2 |= TIMERFD_FLAG; }
+
+            return cast(ulong) ( (p1 << 32) | p2 );
+        }
+
+        static epoll_data fromData(ulong raw) {
+            uint p1 = raw >> 32;
+            uint p2 = raw & 0xFF_FF_FF_FF;
+            return epoll_data(
+                (p1 & TIMERFD_FLAG) != 0, p1 & TIMERFD_MASK,
+                (p2 & TIMERFD_FLAG) != 0, p2 & TIMERFD_MASK,
+            );
+        }
+
+        string toString() const @safe pure nothrow {
+            import std.conv : to;
+            return "epoll_data{ isFd1Timer=" ~ (this.isFd1Timer ? "true" : "false")
+                ~ ", fd1=" ~ this.fd1.to!string
+                ~ ", isFd2Timer=" ~ (this.isFd2Timer ? "true" : "false")
+                ~ ", fd2=" ~ this.fd2.to!string
+            ~ " }";
+        }
+    }
+
+    /// Queue of all fibers waiting for io;
+    private Fiber[immutable(int)] io_waiters;
+
+    this() {
+        epoll_fd = epoll_create1(SOCK_CLOEXEC);
+    }
+
+    /**
+     * Adds the current fiber to the list of waiters for IO
+     * 
+     * Params:
+     *     fd = the fd to wait for
+     *     reason = reason for the wait; prevents wakeup for events not needed
+     */
+    pragma(inline) void addIoWaiter(immutable int fd, IoWaitReason reason = IoWaitReason.read_write) {
+        this.addIoWaiter(fd, reason, epoll_data(false, fd));
+    }
+
+    private void addIoWaiter(immutable int fd, IoWaitReason reason, epoll_data data) {
+        io_waiters[fd] = Fiber.getThis();
+        version (linux) {
+            epoll_event ev;
+            ev.events = reason | EPOLLERR | EPOLLHUP | EPOLLRDHUP; // TODO: add EPOLLET?
+            ev.data.u64 = data.toData();
+            epoll_ctl(this.epoll_fd, EPOLL_CTL_ADD, fd, &ev);
+        }
+    }
+
+    /**
+     * Adds the current fiber to the list of waiters for IO
+     * 
+     * Params:
+     *     fd = the fd to wait for
+     *     timeout = timeout for the IO operation before resuming fiber
+     *     reason = reason for the wait; prevents wakeup for events not needed
+     */
+    void addIoWaiter(immutable int fd, Duration timeout, IoWaitReason reason = IoWaitReason.read_write) {
+        if (timeout.total!"hnsecs" < 0) {
+            return;
+        }
+
+        version (linux) {
+            if ((fd & TIMERFD_FLAG) != 0) {
+                import std.conv : to;
+                assert(false, "FD " ~ fd.to!string ~ " for addIoWaiter() is invalid; highest (31) bit is set!");
+            }
+
+            timespec spec;
+            import ninox.async.timeout : timeout_to_timespec;
+            timeout_to_timespec(timeout, spec);
+            int timerfd = this.addTimeoutWaiter(spec, fd);
+            this.addIoWaiter(fd, reason, epoll_data(false, fd, true, timerfd));
+        }
+    }
+
+    version (linux) {
+        void addTimeoutWaiter(ref timespec spec) {
+            this.addTimeoutWaiter(spec, 0);
+        }
+
+        private int addTimeoutWaiter(ref timespec spec, int extra) {
+            int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+            if (fd < 0) {
+                import core.stdc.string : strerror;
+                import std.string : fromStringz;
+                throw new Exception(format("Failed to create timerfd; errno=%d: %s", errno, fromStringz(strerror(errno))));
+            }
+
+            itimerspec timer_spec;
+            timer_spec.it_value = spec;
+            timerfd_settime(fd, TFD_TIMER_ABSTIME, &timer_spec, null);
+            this.addIoWaiter(fd, IoWaitReason.read, epoll_data(true, fd, false, extra));
+            return fd;
+        }
+    }
+
+    /**
+     * Reschedules an fiber waiting for io
+     * 
+     * This method tries to get the fiber waiting for io of `fd`, and enqueuing it by calling $(LREF schedule).
+     * 
+     * Params:
+     *     fd = the filedescriptor to identifiy the fiber by
+     *     reason = the reason why the IoWaiter was enqueued
+     */
+    private void enqueueIoWaiter(int fd, ResumeReason reason) {
+        auto ptr = fd in io_waiters;
+
+        if (ptr is null || *ptr is null) {
+            throw new Exception(format("Cannot enqueue io waiter for fd=%d; no such waiter exists...", fd));
+        }
+
+        Fiber f = *ptr;
+        io_waiters.remove(fd);
+        version (linux) {
+            epoll_ctl(this.epoll_fd, EPOLL_CTL_DEL, fd, null);
+        }
+        gscheduler.schedule(f, reason);
+    }
+
+    /** 
+     * Gets the count of io waiters
+     * 
+     * Returns: the count of io waiters
+     */
+    public ulong ioWaiterCount() {
+        return this.io_waiters.length;
+    }
+
+    /**
+     * Handles all io-events
+     *
+     * Uses strategies like epoll under linux to check for io-events and handling them.
+     */
+    void pollEvents(int timeout_ms = 0) {
+        version (linux) {
+            epoll_event[64] events;
+
+            auto n = epoll_wait(this.epoll_fd, events.ptr, events.length, timeout_ms);
+            if (n == -1) {
+                import core.stdc.errno;
+                if (errno == EINTR) {
+                    // this happens when for example a breakpoint is set in gdb or similar
+                    // we simply ignore it and continue like normal
+                    return;
+                }
+
+                // THIS IS BAD
+                import core.stdc.string : strerror;
+                import std.string : fromStringz;
+                throw new Exception(format("Epoll failed us; pls look into manual. errno=%d: %s", errno, fromStringz(strerror(errno))));
+            }
+
+            foreach (i; 0 .. n) {
+                auto e = events[i];
+                auto flags = e.events;
+
+                epoll_data data = epoll_data.fromData(e.data.u64);
+
+                debug (ninoxasync_scheduler_pollEvents) {
+                    import std.stdio : writeln;
+                    writeln(format("e.events=%x", cast(uint) flags), " data=", data);
+                }
+
+                if (data.isFd1Timer) {
+                    // close timerfd
+                    import core.sys.posix.unistd : close;
+                    close(data.fd1);
+                }
+                if (data.isFd2Timer) {
+                    // close timerfd
+                    import core.sys.posix.unistd : close;
+                    close(data.fd2);
+                }
+                if (!data.isFd1Timer && data.isFd2Timer) {
+                    this.io_waiters.remove(data.fd2);
+                    epoll_ctl(this.epoll_fd, EPOLL_CTL_DEL, data.fd2, null);
+                }
+
+                bool isTimeout = data.isFd1Timer;
+                int fd = data.fd1;
+
+                if (flags & EPOLLHUP || flags & EPOLLRDHUP) {
+                    debug (ninoxasync_scheduler_pollEvents) {
+                        import std.stdio : writeln;
+                        writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLHUP/EPOLLRDHUP for fd=", fd);
+                    }
+                    this.enqueueIoWaiter(fd, ResumeReason.io_hup);
+                }
+                else if (flags & EPOLLERR) {
+                    debug (ninoxasync_scheduler_pollEvents) {
+                        import std.stdio : writeln;
+                        writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLERR for fd=", fd);
+                    }
+                    this.enqueueIoWaiter(fd, ResumeReason.io_error);
+                }
+                else if (flags & EPOLLIN) {
+                    // ready to read
+                    debug (ninoxasync_scheduler_pollEvents) {
+                        import std.stdio : writeln;
+                        writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLIN for fd=", fd);
+                    }
+                    this.enqueueIoWaiter(fd, isTimeout ? ResumeReason.io_timeout : ResumeReason.io_ready);
+                }
+                else if (flags & EPOLLOUT) {
+                    // ready to write
+                    debug (ninoxasync_scheduler_pollEvents) {
+                        import std.stdio : writeln;
+                        writeln("[ninox.async.scheduler.Scheduler.pollEvents] got EPOLLOUT for fd=", fd);
+                    }
+                    this.enqueueIoWaiter(fd, ResumeReason.io_ready);
+                }
+            }
+        }
+    }
+
+}
+
+

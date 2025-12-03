@@ -150,7 +150,7 @@ class FileReadFuture : Future!(void[]) {
             this.value ~= block;
 
             if (readsize < count) {
-                gscheduler.addIoWaiter(this.fd, IoWaitReason.read);
+                gscheduler.io.addIoWaiter(this.fd, IoWaitReason.read);
                 return false;
             }
         }

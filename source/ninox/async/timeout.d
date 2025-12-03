@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Mai-Lapyst
+ * Copyright (C) 2023-2025 Mai-Lapyst
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -19,7 +19,7 @@
  * This module provides the most simplest future: a timeout
  * 
  * License:   $(HTTP https://www.gnu.org/licenses/agpl-3.0.html, AGPL 3.0).
- * Copyright: Copyright (C) 2023 Mai-Lapyst
+ * Copyright: Copyright (C) 2023-2025 Mai-Lapyst
  * Authors:   $(HTTP codeark.it/Mai-Lapyst, Mai-Lapyst)
  */
 
@@ -71,7 +71,7 @@ class TimeoutFuture : Future!void {
 
 	public void await() {
 		version (linux) {
-			gscheduler.addTimeoutWaiter(this.spec);
+			gscheduler.io.addTimeoutWaiter(this.spec);
 			Fiber.yield();
 			// fiber should only be resumed once the timeout was reached
 		}

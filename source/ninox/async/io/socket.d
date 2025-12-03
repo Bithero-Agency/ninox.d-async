@@ -50,7 +50,7 @@ class SocketAcceptFuture : ValueFuture!AsyncSocket {
     }
 
     protected override bool isDone() {
-        gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.read);
+        gscheduler.io.addIoWaiter(this.sock.handle(), IoWaitReason.read);
 
         // pause this fiber, we only get called again
         // if there is a socket to accept
@@ -150,7 +150,7 @@ class SocketRecvFuture : ValueFuture!size_t {
         }
 
         if (this.remaining > 0) {
-            gscheduler.addIoWaiter(this.sock.handle(), this.read_timeout, IoWaitReason.read);
+            gscheduler.io.addIoWaiter(this.sock.handle(), this.read_timeout, IoWaitReason.read);
             return false;
         }
         this.value = 0; // TODO: ???
@@ -222,7 +222,7 @@ class SocketActivityFuture : Future!bool {
             return true;
         }
 
-        gscheduler.addIoWaiter(this.sock.handle(), this.timeout, IoWaitReason.read);
+        gscheduler.io.addIoWaiter(this.sock.handle(), this.timeout, IoWaitReason.read);
 
         Fiber.yield();
 
@@ -301,7 +301,7 @@ class SocketSendFuture : VoidFuture {
         }
 
         if (this.remaining > 0) {
-            gscheduler.addIoWaiter(this.sock.handle(), IoWaitReason.write);
+            gscheduler.io.addIoWaiter(this.sock.handle(), IoWaitReason.write);
             return false;
         }
         return true;
