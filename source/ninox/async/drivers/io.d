@@ -46,8 +46,8 @@ static if (!is(typeof(SOCK_CLOEXEC)))
 
 /// Enum to specify for what IO operation to wait for
 enum IoWaitReason {
-    read_write = EPOLLIN | EPOLLOUT,
-    read = EPOLLIN,
+    read_write = EPOLLIN | EPOLLRDHUP | EPOLLOUT,
+    read = EPOLLIN | EPOLLRDHUP,
     write = EPOLLOUT,
 }
 
@@ -133,7 +133,7 @@ class IoDriver {
         io_waiters[fd] = Fiber.getThis();
         version (linux) {
             epoll_event ev;
-            ev.events = reason | EPOLLERR | EPOLLHUP | EPOLLRDHUP; // TODO: add EPOLLET?
+            ev.events = reason; // TODO: add EPOLLET?
             ev.data.u64 = data.toData();
             epoll_ctl(this.epoll_fd, EPOLL_CTL_ADD, fd, &ev);
         }
