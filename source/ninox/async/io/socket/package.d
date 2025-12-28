@@ -33,30 +33,13 @@ import ninox.async : gscheduler;
 import ninox.async.scheduler : IoWaitReason, ResumeReason, TIMEOUT_INFINITY;
 import ninox.async.futures : ValueFuture, Future, VoidFuture, yieldAsync;
 import ninox.async.io.errors;
+import ninox.async.io.socket.accept;
 
 version (Posix) {
     import core.sys.posix.sys.socket, core.sys.posix.sys.ioctl;
     import core.sys.posix.fcntl;
 }
 else { static assert(false, "Module " ~ .stringof ~ " not implemented for this OS."); }
-
-// TODO: (arch!=x86 && os==android) => accept4
-version (DragonFlyBSD) { version = has_accept4; }
-else version (FreeBSD) { version = has_accept4; }
-// TODO: fuchsia => accept4
-else version (Hurd) { version = has_accept4; }
-// TODO: illumos => accept4
-else version (linux) { version = has_accept4; }
-else version (NetBSD) { version = has_accept4; }
-else version (OpenBSD) { version = has_accept4; }
-else version (Solaris) { version = has_accept4; }
-else version (Cygwin) { version = has_accept4; }
-
-version (has_accept4) {
-    extern (C) nothrow @nogc {
-        private int accept4(int, sockaddr*, socklen_t*, int);
-    }
-}
 
 private Address createAddressFrom(AddressFamily family, sockaddr_storage* storage, size_t len) {
     switch (family) {
@@ -72,54 +55,6 @@ private Address createAddressFrom(AddressFamily family, sockaddr_storage* storag
             auto res = new UnknownAddress();
             *res.name = *(cast(sockaddr*) storage);
             return res;
-    }
-}
-
-/**
- * Future for accepting sockets from an listening socket.
- * Use $(LREF AsyncSocket.accept) to aqquire an instance of this.
- */
-class SocketAcceptFuture : Future!AsyncSocket {
-    private AsyncSocket sock;
-
-    this(AsyncSocket sock) {
-        this.sock = sock;
-    }
-
-    override AsyncSocket await() {
-        auto handle = this.sock.handle();
-        gscheduler.io.addIoWaiter(handle, IoWaitReason.read);
-
-        // pause this fiber, we only get called again
-        // if there is a socket to accept
-        Fiber.yield();
-
-        sockaddr addr;
-        socklen_t addr_len = sockaddr.sizeof;
-
-        import core.sys.posix.fcntl;
-        version (has_accept4) {
-            // TODO: use SOCK_NONBLOCK
-            // TODO: use SOCK_CLOEXEC
-            auto sock = accept4(
-                handle,
-                &addr, &addr_len,
-                O_CLOEXEC | O_NONBLOCK
-            );
-            if (sock < 0) {
-                // forwards errno
-                throw new SocketAcceptException("Unable to accept socket connection");
-            }
-        } else {
-            static assert(false, "Unsupported target: no support for accept4");
-        }
-
-        // TODO: allow to return the socket address or somehow store it...
-
-        auto res = new AsyncSocket();
-        res.sock = cast(socket_t) sock;
-        res.address_family = this.sock.addressFamily;
-        return res;
     }
 }
 
@@ -340,11 +275,13 @@ class SocketSendFuture : VoidFuture {
  * Asyncronous variant of $(STDREF Socket, std,socket). Use it like the standard libary variant.
  */
 class AsyncSocket {
-    private socket_t sock;
-    private AddressFamily address_family;
+    package(ninox.async.io.socket) {
+        socket_t sock;
+        AddressFamily address_family;
+    }
 
     /// Only to be used in `SocketAcceptFuture`.
-    private this() {}
+    package(ninox.async.io.socket) this() {}
 
     /// Use an existing standardlibrary socket.
     /// Afterwards the underlaying system socket is owned by this type.
