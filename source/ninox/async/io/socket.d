@@ -38,27 +38,68 @@ version (Posix) {
 }
 else { static assert(false, "Module " ~ .stringof ~ " not implemented for this OS."); }
 
+// TODO: (arch!=x86 && os==android) => accept4
+version (DragonFlyBSD) { version = has_accept4; }
+else version (FreeBSD) { version = has_accept4; }
+// TODO: fuchsia => accept4
+else version (Hurd) { version = has_accept4; }
+// TODO: illumos => accept4
+else version (linux) { version = has_accept4; }
+else version (NetBSD) { version = has_accept4; }
+else version (OpenBSD) { version = has_accept4; }
+else version (Solaris) { version = has_accept4; }
+else version (Cygwin) { version = has_accept4; }
+
+version (has_accept4) {
+    extern (C) nothrow @nogc {
+        private int accept4(int, sockaddr*, socklen_t*, int);
+    }
+}
+
 /**
  * Future for accepting sockets from an listening socket.
  * Use $(LREF AsyncSocket.accept) to aqquire an instance of this.
  */
-class SocketAcceptFuture : ValueFuture!AsyncSocket {
+class SocketAcceptFuture : Future!AsyncSocket {
     private Socket sock;
 
     this(Socket sock) {
         this.sock = sock;
     }
 
-    protected override bool isDone() {
-        gscheduler.io.addIoWaiter(this.sock.handle(), IoWaitReason.read);
+    override AsyncSocket await() {
+        auto handle = this.sock.handle();
+        gscheduler.io.addIoWaiter(handle, IoWaitReason.read);
 
         // pause this fiber, we only get called again
         // if there is a socket to accept
         Fiber.yield();
 
-        auto sock = this.sock.accept();
-        this.value = new AsyncSocket(sock);
-        return true;
+        sockaddr addr;
+        socklen_t addr_len = sockaddr.sizeof;
+
+        import core.sys.posix.fcntl;
+        version (has_accept4) {
+            // TODO: use SOCK_NONBLOCK
+            // TODO: use SOCK_CLOEXEC
+            auto sock = accept4(
+                handle,
+                &addr, &addr_len,
+                O_CLOEXEC | O_NONBLOCK
+            );
+            if (sock < 0) {
+                // forwards errno
+                throw new SocketAcceptException("Unable to accept socket connection");
+            }
+        } else {
+            static assert(false, "Unsupported target: no support for accept4");
+        }
+
+        // TODO: allow to return the socket address or somehow store it...
+
+        auto res = new AsyncSocket();
+        res.sock = new Socket(cast(socket_t) sock, this.sock.addressFamily);
+        return res;
     }
 }
 
@@ -326,6 +367,9 @@ class SocketSendFuture : VoidFuture {
  */
 class AsyncSocket {
     private Socket sock;
+
+    /// Only to be used in `SocketAcceptFuture`.
+    private this() {}
 
     /// Use an existing socket.
     this(Socket sock) {
