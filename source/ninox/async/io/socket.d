@@ -104,11 +104,9 @@ class SocketRecvException : SocketException {
  * Future for accepting data from an socket.
  * Use $(LREF AsyncSocket.recieve) to aqquire an instance of this.
  */
-class SocketRecvFuture : ValueFuture!size_t {
+class SocketRecvFuture : Future!size_t {
     private Socket sock;
     private const(void[]) buf;
-    private size_t off = 0;
-    private size_t remaining;
     private Duration read_timeout;
     private SocketFlags flags;
     private bool strict = false;
@@ -117,76 +115,59 @@ class SocketRecvFuture : ValueFuture!size_t {
     this(Socket sock, const(void[]) buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
         this.sock = sock;
         this.buf = buf;
-        this.remaining = buf.length;
         this.read_timeout = read_timeout;
         this.flags = flags;
     }
 
-    protected override bool isDone() {
-        // check for data
-
-        int count = 0;
-        ioctl(this.sock.handle(), FIONREAD, &count);
-        if (count > 0) {
-            import std.algorithm : min;
-            size_t readsize = min(count, this.remaining, MAX_SOCK_READBLOCK);
-
-            version (Posix) {
-                void* ptr = cast(void*) (this.buf.ptr + this.off);
-                auto r = recv(
-                    this.sock.handle(), ptr, readsize, cast(int) this.flags
-                );
-                this.remaining -= r;
-                this.off += r;
-            }
-
-            if (count > readsize && this.remaining > 0) {
-                // buffer has still space, and socket has still data, continue next cycle
-                yieldAsync();
-                return false;
-            }
-            this.value = this.off;
-            return true;
-        }
-
-        if (this.remaining > 0) {
-            gscheduler.io.addIoWaiter(this.sock.handle(), this.read_timeout, IoWaitReason.read);
-            return false;
-        }
-        this.value = 0; // TODO: ???
-        return true;
-    }
-
     override size_t await() {
-        while (!this.isDone()) {
-            // reschedule already done by isDone() via addIoWaiter
-
-            // Yield the current fiber until the task itself is done
-            Fiber.yield();
-
-            // check reason why we resume:
-            final switch (gscheduler.resume_reason) {
-                case ResumeReason.normal:
-                case ResumeReason.io_ready: {
+        while (true) {
+            auto n = recv(
+                this.sock.handle(),
+                cast(void*) this.buf.ptr, this.buf.length,
+                cast(int) this.flags
+            );
+            if (n == 0) {
+                // EOF encountered, no more data!
+                return 0;
+            }
+            else if (n == -1) {
+                import core.stdc.errno;
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                    // Re-enqueue
+                    gscheduler.io.addIoWaiter(this.sock.handle(), this.read_timeout, IoWaitReason.read);
+                    Fiber.yield();
+                    final switch (gscheduler.resume_reason) {
+                        case ResumeReason.normal:
+                        case ResumeReason.io_ready: {
+                            continue;
+                        }
+                        case ResumeReason.io_timeout: {
+                            if (this.strict) {
+                                throw new SocketRecvException(SocketRecvException.Kind.timeout);
+                            }
+                            return 0;
+                        }
+                        case ResumeReason.io_error: {
+                            throw new SocketRecvException(SocketRecvException.Kind.error);
+                        }
+                        case ResumeReason.io_hup: {
+                            throw new SocketRecvException(SocketRecvException.Kind.hup);
+                        }
+                    }
                     continue;
                 }
-
-                case ResumeReason.io_timeout: {
-                    if (this.strict && this.value <= 0) {
-                        throw new SocketRecvException(SocketRecvException.Kind.timeout);
-                    }
-                    return this.value;
-                }
-
-                case ResumeReason.io_error: {
+                else {
+                    // Other error
+                    // TODO: somehow communicate errno
                     throw new SocketRecvException(SocketRecvException.Kind.error);
                 }
-                case ResumeReason.io_hup: {
-                    throw new SocketRecvException(SocketRecvException.Kind.hup);
-                }
+            }
+            else {
+                // n contains the size of the read.
+                // TODO: tokio does clear "readiness" on an partial read. Need to investigate why.
+                return n;
             }
         }
-        return this.getValue();
     }
 }
 
