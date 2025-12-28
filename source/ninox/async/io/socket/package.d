@@ -34,6 +34,7 @@ import ninox.async.scheduler : IoWaitReason, ResumeReason, TIMEOUT_INFINITY;
 import ninox.async.futures : ValueFuture, Future, VoidFuture, yieldAsync;
 import ninox.async.io.errors;
 import ninox.async.io.socket.accept;
+import ninox.async.io.socket.send;
 
 version (Posix) {
     import core.sys.posix.sys.socket, core.sys.posix.sys.ioctl;
@@ -197,77 +198,6 @@ class SocketActivityFuture : Future!bool {
                 return false;
             }
         }
-    }
-}
-
-/**
- * Future for sending data over a socket.
- * Use $(LREF AsyncSocket.send) to aqquire an instance of this.
- */
-class SocketSendFuture : VoidFuture {
-    private AsyncSocket sock;
-    private const(void[]) buf;
-    private size_t off = 0;
-    private size_t remaining;
-    private SocketFlags flags;
-
-    this(AsyncSocket sock, const(void[]) buf, SocketFlags flags = SocketFlags.NONE) {
-        this.sock = sock;
-        this.buf = buf;
-        this.remaining = buf.length;
-        this.flags = flags;
-    }
-
-    protected override bool isDone() {
-        import std.algorithm : min;
-        int writesize = min(this.remaining, MAX_SOCK_WRITEBLOCK);
-
-        version (Posix) {
-            void* ptr = cast(void*) (this.buf.ptr + this.off);
-            auto r = send(
-                this.sock.handle(), ptr, writesize, cast(int) this.flags
-            );
-            this.remaining -= r;
-            this.off += r;
-        }
-
-        if (this.remaining > 0) {
-            gscheduler.io.addIoWaiter(this.sock.handle(), IoWaitReason.write);
-            return false;
-        }
-        return true;
-    }
-
-    override void await() {
-        while (!this.isDone()) {
-            // reschedule already done by isDone() via addIoWaiter
-
-            // Yield the current fiber until the task itself is done
-            Fiber.yield();
-
-            // check reason why we resume:
-            final switch (gscheduler.resume_reason) {
-                case ResumeReason.normal:
-                case ResumeReason.io_ready: {
-                    continue;
-                }
-
-                case ResumeReason.io_timeout: {
-                    // if (this.strict) {
-                    throw new SocketSendException(SocketSendException.Kind.timeout);
-                    // }
-                    // return;
-                }
-
-                case ResumeReason.io_error: {
-                    throw new SocketSendException(SocketSendException.Kind.error);
-                }
-                case ResumeReason.io_hup: {
-                    throw new SocketSendException(SocketSendException.Kind.hup);
-                }
-            }
-        }
-        return this.getValue();
     }
 }
 
