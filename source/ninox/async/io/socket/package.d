@@ -43,7 +43,7 @@ version (Posix) {
 }
 else { static assert(false, "Module " ~ .stringof ~ " not implemented for this OS."); }
 
-private Address createAddressFrom(AddressFamily family, sockaddr_storage* storage, size_t len) {
+Address createAddressFrom(AddressFamily family, sockaddr_storage* storage, size_t len) {
     switch (family) {
         // TODO: AddressFamily.UNIX with sockaddr_un
         case AddressFamily.INET:
@@ -267,6 +267,17 @@ class AsyncSocket {
      */
     Future!AsyncSocket accept() {
         return new SocketAcceptFuture(this);
+    }
+
+    /** 
+     * Accepts an incomming connection like $(LREF accept), but also captures the
+     * remote address given back by the `accept` syscall.
+     * 
+     * Params:
+     *   address = reference to the address to be set.
+     */
+    Future!AsyncSocket accept(ref Address address) {
+        return new SocketAcceptFuture(this, &address);
     }
 
     /**

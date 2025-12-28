@@ -26,7 +26,7 @@
 module ninox.async.io.socket.accept;
 
 import core.thread : Fiber;
-import std.socket : SocketAcceptException, socket_t;
+import std.socket : SocketAcceptException, socket_t, Address;
 
 import ninox.async : gscheduler;
 import ninox.async.scheduler : IoWaitReason;
@@ -63,9 +63,11 @@ version (has_accept4) {
  */
 class SocketAcceptFuture : Future!AsyncSocket {
     private AsyncSocket sock;
+    private Address* addr_out = null;
 
-    this(AsyncSocket sock) {
+    this(AsyncSocket sock, Address* addr_out = null) {
         this.sock = sock;
+        this.addr_out = addr_out;
     }
 
     override AsyncSocket await() {
@@ -76,8 +78,8 @@ class SocketAcceptFuture : Future!AsyncSocket {
         // if there is a socket to accept
         Fiber.yield();
 
-        sockaddr addr;
-        socklen_t addr_len = sockaddr.sizeof;
+        sockaddr_storage storage;
+        socklen_t len = sockaddr_storage.sizeof;
 
         import core.sys.posix.fcntl;
         version (has_accept4) {
@@ -85,7 +87,7 @@ class SocketAcceptFuture : Future!AsyncSocket {
             // TODO: use SOCK_CLOEXEC
             auto sock = accept4(
                 handle,
-                &addr, &addr_len,
+                cast(sockaddr*) &storage, &len,
                 O_CLOEXEC | O_NONBLOCK
             );
             if (sock < 0) {
@@ -96,11 +98,14 @@ class SocketAcceptFuture : Future!AsyncSocket {
             static assert(false, "Unsupported target: no support for accept4");
         }
 
-        // TODO: allow to return the socket address or somehow store it...
+        auto af = this.sock.address_family;
+        if (this.addr_out !is null) {
+            *this.addr_out = createAddressFrom(af, &storage, len);
+        }
 
         auto res = new AsyncSocket();
         res.sock = cast(socket_t) sock;
-        res.address_family = this.sock.addressFamily;
+        res.address_family = af;
         return res;
     }
 }
