@@ -35,6 +35,7 @@ import ninox.async.futures : ValueFuture, Future, VoidFuture, yieldAsync;
 import ninox.async.io.errors;
 import ninox.async.io.socket.accept;
 import ninox.async.io.socket.send;
+import ninox.async.io.socket.recv;
 
 version (Posix) {
     import core.sys.posix.sys.socket, core.sys.posix.sys.ioctl;
@@ -64,77 +65,6 @@ static int MAX_SOCK_WRITEBLOCK = 1024 * 32;
 
 static Duration DEFAULT_SOCK_DATA_TIMEOUT = dur!"seconds"(30);
 alias SOCK_TIMEOUT_INFINITY = TIMEOUT_INFINITY;
-
-/**
- * Future for accepting data from an socket.
- * Use $(LREF AsyncSocket.recieve) to aqquire an instance of this.
- */
-class SocketRecvFuture : Future!size_t {
-    private AsyncSocket sock;
-    private const(void[]) buf;
-    private Duration read_timeout;
-    private SocketFlags flags;
-    private bool strict = false;
-
-    /// Reads into a predefined buffer
-    this(AsyncSocket sock, const(void[]) buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
-        this.sock = sock;
-        this.buf = buf;
-        this.read_timeout = read_timeout;
-        this.flags = flags;
-    }
-
-    override size_t await() {
-        while (true) {
-            auto n = recv(
-                this.sock.handle(),
-                cast(void*) this.buf.ptr, this.buf.length,
-                cast(int) this.flags
-            );
-            if (n == 0) {
-                // EOF encountered, no more data!
-                return 0;
-            }
-            else if (n == -1) {
-                import core.stdc.errno;
-                if (errno == EWOULDBLOCK || errno == EAGAIN) {
-                    // Re-enqueue
-                    gscheduler.io.addIoWaiter(this.sock.handle(), this.read_timeout, IoWaitReason.read);
-                    Fiber.yield();
-                    final switch (gscheduler.resume_reason) {
-                        case ResumeReason.normal:
-                        case ResumeReason.io_ready: {
-                            continue;
-                        }
-                        case ResumeReason.io_timeout: {
-                            if (this.strict) {
-                                throw new SocketRecvException(SocketRecvException.Kind.timeout);
-                            }
-                            return 0;
-                        }
-                        case ResumeReason.io_error: {
-                            throw new SocketRecvException(SocketRecvException.Kind.error);
-                        }
-                        case ResumeReason.io_hup: {
-                            throw new SocketRecvException(SocketRecvException.Kind.hup);
-                        }
-                    }
-                    continue;
-                }
-                else {
-                    // Other error
-                    // TODO: somehow communicate errno
-                    throw new SocketRecvException(SocketRecvException.Kind.error);
-                }
-            }
-            else {
-                // n contains the size of the read.
-                // TODO: tokio does clear "readiness" on an partial read. Need to investigate why.
-                return n;
-            }
-        }
-    }
-}
 
 /**
  * Future for checking for data / activity on a socket.
@@ -441,9 +371,7 @@ class AsyncSocket {
      * Return: a future that can be awaited to recieve the amount recived and to make `buf` valid.
      */
     SocketRecvFuture recieveStrictTimeout(scope void[] buf, Duration read_timeout = DEFAULT_SOCK_DATA_TIMEOUT, SocketFlags flags = SocketFlags.NONE) {
-        auto f = new SocketRecvFuture(this, buf, read_timeout, flags);
-        f.strict = true;
-        return f;
+        return new SocketRecvFuture(this, buf, read_timeout, flags, true);
     }
 
     /** 
