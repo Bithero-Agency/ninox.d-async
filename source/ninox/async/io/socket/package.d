@@ -32,6 +32,7 @@ import core.thread : Fiber;
 import ninox.async : gscheduler;
 import ninox.async.scheduler : IoWaitReason, ResumeReason, TIMEOUT_INFINITY;
 import ninox.async.futures : ValueFuture, Future, VoidFuture, yieldAsync;
+import ninox.async.io.errors;
 
 version (Posix) {
     import core.sys.posix.sys.socket, core.sys.posix.sys.ioctl;
@@ -128,38 +129,6 @@ static int MAX_SOCK_WRITEBLOCK = 1024 * 32;
 static Duration DEFAULT_SOCK_DATA_TIMEOUT = dur!"seconds"(30);
 alias SOCK_TIMEOUT_INFINITY = TIMEOUT_INFINITY;
 
-/// Base Exception for all Socket things
-class SocketException : Exception {
-    enum Kind { error, hup, timeout }
-
-    @property Kind kind() const {
-        return this._kind;
-    }
-
-protected:
-    Kind _kind;
-
-    @nogc @safe pure nothrow string getMsg() {
-        final switch (this._kind) {
-            case Kind.error: { return "Error while trying do IO or while waiting"; }
-            case Kind.hup: { return "IO failed because peer hung up"; }
-            case Kind.timeout: { return "IO timeout reached without any data recieved"; }
-        }
-    }
-
-    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
-        this._kind = kind;
-        super(this.getMsg(), file, line, null);
-    }
-}
-
-/// Exception for SocketRecvFuture
-class SocketRecvException : SocketException {
-    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
-        super(kind, file, line);
-    }
-}
-
 /**
  * Future for accepting data from an socket.
  * Use $(LREF AsyncSocket.recieve) to aqquire an instance of this.
@@ -231,13 +200,6 @@ class SocketRecvFuture : Future!size_t {
     }
 }
 
-/// Exception for SocketActivityFuture
-class SocketActivityException : SocketException {
-    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
-        super(kind, file, line);
-    }
-}
-
 /**
  * Future for checking for data / activity on a socket.
  * Use $(LREF AsyncSocket.waitForActivity) to aqquire an instance of this.
@@ -289,7 +251,7 @@ class SocketActivityFuture : Future!bool {
             }
 
             case ResumeReason.io_error: {
-                throw new SocketActivityException(SocketException.Kind.error);
+                throw new SocketActivityException(SocketActivityException.Kind.error);
             }
             case ResumeReason.io_hup: {
                 // socket hang up; treat it as no activity available / timeout
@@ -300,13 +262,6 @@ class SocketActivityFuture : Future!bool {
                 return false;
             }
         }
-    }
-}
-
-/// Exception for SocketSendFuture
-class SocketSendException : SocketException {
-    @nogc @safe pure nothrow this(Kind kind, string file = __FILE__, size_t line = __LINE__) {
-        super(kind, file, line);
     }
 }
 
